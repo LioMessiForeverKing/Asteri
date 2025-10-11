@@ -118,18 +118,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
     
     // Sanitize and normalize vectors to expected dimension, drop bad rows
     const EXPECTED_DIM = Number(Deno.env.get("EMBED_DIM") ?? "3072");
+    function parseVectorString(s: string): number[] {
+      // Accept formats like "[0.1, -0.2, ...]" or "{0.1,-0.2,...}"
+      const trimmed = s.trim().replace(/^\[|^\{|\]|\}$/g, "");
+      if (trimmed.length === 0) return [];
+      return trimmed
+        .split(",")
+        .map((t) => Number(t))
+        .filter((n) => Number.isFinite(n));
+    }
+    function toNumberArray(v: any): number[] {
+      if (Array.isArray(v)) return v.map((x) => Number(x));
+      if (typeof v === "string") return parseVectorString(v);
+      return [];
+    }
     function sanitize(v: any): number[] | null {
-      if (!Array.isArray(v) || v.length === 0) return null;
+      const arr = toNumberArray(v);
+      if (!Array.isArray(arr) || arr.length === 0) return null;
       const out = new Array<number>(EXPECTED_DIM).fill(0);
-      const n = Math.min(EXPECTED_DIM, v.length);
+      const n = Math.min(EXPECTED_DIM, arr.length);
       let hasFinite = false;
       for (let i = 0; i < n; i++) {
-        const val = Number(v[i]);
+        const val = Number(arr[i]);
         if (Number.isFinite(val)) {
           out[i] = val;
           hasFinite = true;
-        } else {
-          out[i] = 0;
         }
       }
       return hasFinite ? out : null;
@@ -145,7 +158,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     if (embeds.length === 1) {
       // Single-user scenario: create cluster 0 as the user's vector and assign them
-      const only = embeds[0];
+      const only = cleaned[0];
       const centroid = only.vector as number[];
       await supabase.from("clusters").upsert([{ cluster_id: 0, centroid, created_at: new Date().toISOString() }], { onConflict: "cluster_id" });
       await supabase.from("user_clusters").upsert({ user_id: only.user_id, cluster_id: 0, similarity: 1.0, created_at: new Date().toISOString() });
@@ -175,15 +188,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
     }
     const callerVec = vectors[indexOfCaller];
-    let best = 0;
-    let bestScore = -Infinity;
-    for (let c = 0; c < centroids.length; c++) {
-      const score = cosineSimilarity(callerVec, centroids[c]);
-      if (score > bestScore) {
-        bestScore = score;
-        best = c;
-      }
-    }
+    // Use kmeans assignment for stability
+    const best = assignments[indexOfCaller] ?? 0;
+    const bestScore = cosineSimilarity(callerVec, centroids[best]);
 
     const { error: assignErr } = await supabase
       .from("user_clusters")

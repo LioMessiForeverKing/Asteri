@@ -1,21 +1,32 @@
-Pixelify Sans Variable Font
-===========================
+Figtree Variable Font
+=====================
 
-This download contains Pixelify Sans as both a variable font and static fonts.
+This download contains Figtree as both variable fonts and static fonts.
 
-Pixelify Sans is a variable font with this axis:
+Figtree is a variable font with this axis:
   wght
 
-This means all the styles are contained in a single file:
-  PixelifySans-VariableFont_wght.ttf
+This means all the styles are contained in these files:
+  Figtree/Figtree-VariableFont_wght.ttf
+  Figtree/Figtree-Italic-VariableFont_wght.ttf
 
 If your app fully supports variable fonts, you can now pick intermediate styles
 that aren’t available as static fonts. Not all apps support variable fonts, and
-in those cases you can use the static font files for Pixelify Sans:
-  static/PixelifySans-Regular.ttf
-  static/PixelifySans-Medium.ttf
-  static/PixelifySans-SemiBold.ttf
-  static/PixelifySans-Bold.ttf
+in those cases you can use the static font files for Figtree:
+  Figtree/static/Figtree-Light.ttf
+  Figtree/static/Figtree-Regular.ttf
+  Figtree/static/Figtree-Medium.ttf
+  Figtree/static/Figtree-SemiBold.ttf
+  Figtree/static/Figtree-Bold.ttf
+  Figtree/static/Figtree-ExtraBold.ttf
+  Figtree/static/Figtree-Black.ttf
+  Figtree/static/Figtree-LightItalic.ttf
+  Figtree/static/Figtree-Italic.ttf
+  Figtree/static/Figtree-MediumItalic.ttf
+  Figtree/static/Figtree-SemiBoldItalic.ttf
+  Figtree/static/Figtree-BoldItalic.ttf
+  Figtree/static/Figtree-ExtraBoldItalic.ttf
+  Figtree/static/Figtree-BlackItalic.ttf
 
 Get started
 -----------

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'background.dart';
 import 'pages/auth_gate.dart';
 import 'utils/constants.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,9 +19,10 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Background(child: AuthGate()),
+      theme: AsteriaTheme.lightTheme,
+      home: const Background(child: AuthGate()),
     );
   }
 }
