@@ -103,15 +103,23 @@ class _HomePageState extends State<HomePage> {
       final embeddedCount = await YouTubeService.embedUserYouTubeProfile(
         full: full,
       );
-      // After embedding, assign to a cluster
-      final assign = await YouTubeService.assignClusterForUser();
+      // After embedding, assign to a cluster (retry briefly if pending)
+      Map<String, dynamic> assign = await YouTubeService.assignClusterForUser();
+      if (assign['cluster_id'] == null) {
+        // Retry a few times with short delays to allow eventual consistency
+        for (int i = 0; i < 3 && assign['cluster_id'] == null; i++) {
+          await Future.delayed(const Duration(milliseconds: 900));
+          assign = await YouTubeService.assignClusterForUser();
+        }
+      }
       if (!mounted) return;
       setState(() {
         final cid = assign['cluster_id'];
         final sim = assign['similarity'];
+        final msg = assign['message'];
         _syncInfo = cid != null
             ? 'Upserted $subCount subs, $likeCount likes • Embedded $embeddedCount • Cluster $cid (sim: ${sim?.toStringAsFixed(3) ?? sim})'
-            : 'Upserted $subCount subs, $likeCount likes • Embedded $embeddedCount (cluster pending)';
+            : 'Upserted $subCount subs, $likeCount likes • Embedded $embeddedCount (cluster pending${msg != null ? ": $msg" : ""})';
       });
     } catch (e) {
       if (!mounted) return;

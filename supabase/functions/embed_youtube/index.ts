@@ -86,7 +86,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const openaiJson = await openaiRes.json();
-    const vectors: number[][] = (openaiJson?.data ?? []).map((d: any) => d.embedding as number[]);
+    const rawVectors: unknown[] = openaiJson?.data ?? [];
+    const vectors: number[][] = rawVectors
+      .map((d: any) => (Array.isArray(d?.embedding) ? d.embedding as number[] : []))
+      .filter((arr: number[]) => Array.isArray(arr) && arr.length > 0);
     if (!Array.isArray(vectors) || vectors.length === 0) {
       return new Response(JSON.stringify({ error: "no embeddings returned" }), {
         status: 502,
@@ -94,12 +97,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const dim = vectors[0].length;
-    const mean = new Array<number>(dim).fill(0);
+    // Enforce expected dimension and sanitize values
+    const EXPECTED_DIM = Number(Deno.env.get("EMBED_DIM") ?? "3072");
+    const dim = Math.min(EXPECTED_DIM, vectors[0].length);
+    const mean = new Array<number>(EXPECTED_DIM).fill(0);
     for (const v of vectors) {
-      for (let i = 0; i < dim; i++) mean[i] += v[i];
+      // Normalize each vector to the expected length via slice/pad
+      const safeV: number[] = new Array<number>(EXPECTED_DIM).fill(0);
+      for (let i = 0; i < Math.min(v.length, EXPECTED_DIM); i++) {
+        const val = v[i];
+        safeV[i] = Number.isFinite(val) ? val : 0;
+      }
+      for (let i = 0; i < EXPECTED_DIM; i++) mean[i] += safeV[i];
     }
-    for (let i = 0; i < dim; i++) mean[i] = mean[i] / vectors.length;
+    for (let i = 0; i < EXPECTED_DIM; i++) {
+      const avg = mean[i] / vectors.length;
+      mean[i] = Number.isFinite(avg) ? avg : 0;
+    }
 
     const { error: upsertError } = await supabase
       .from("user_embeddings")
