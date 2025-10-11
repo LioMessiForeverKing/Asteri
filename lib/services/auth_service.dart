@@ -1,23 +1,31 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/constants.dart';
 
 class AuthService {
   static final SupabaseClient _supabase = Supabase.instance.client;
-  
+  static const List<String> _scopes = <String>[
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/youtube.readonly',
+  ];
+
   // Get current user
   static User? get currentUser => _supabase.auth.currentUser;
-  
+
   // Get auth state stream
-  static Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
-  
+  static Stream<AuthState> get authStateChanges =>
+      _supabase.auth.onAuthStateChange;
+
   // Sign in with Google
   static Future<void> signInWithGoogle() async {
     final googleSignIn = GoogleSignIn(
       clientId: _platformClientId(),
       serverClientId: AppConstants.kGoogleWebClientId,
+      scopes: _scopes,
     );
 
     final user = await googleSignIn.signIn();
@@ -39,12 +47,26 @@ class AuthService {
       accessToken: accessToken,
     );
   }
-  
+
+  // Retrieve Google OAuth access token (with YouTube scope) for API calls
+  static Future<String?> getGoogleAccessToken() async {
+    final googleSignIn = GoogleSignIn(
+      clientId: _platformClientId(),
+      serverClientId: AppConstants.kGoogleWebClientId,
+      scopes: _scopes,
+    );
+    GoogleSignInAccount? user = googleSignIn.currentUser;
+    user ??= await googleSignIn.signInSilently();
+    if (user == null) return null;
+    final auth = await user.authentication;
+    return auth.accessToken;
+  }
+
   // Sign out
   static Future<void> signOut() async {
     await _supabase.auth.signOut();
   }
-  
+
   // Get platform-specific client ID
   static String? _platformClientId() {
     if (kIsWeb) return null;
