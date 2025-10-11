@@ -9,6 +9,4 @@ class AppConstants {
       '570375783557-493lelbeelrpmkgvup1qp854kqj8liq5.apps.googleusercontent.com';
   static const String kGoogleIosClientId =
       '570375783557-elqg9bqqcdmij0vuntt255etg8h85qap.apps.googleusercontent.com';
-
-  static const String oPEN_AI_API_KEY = '';
 }
