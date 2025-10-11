@@ -48,6 +48,36 @@ class AuthService {
     );
   }
 
+  // Attempt silent Google sign-in and ensure Supabase session exists.
+  // If a Google account is available, link it to Supabase without UI.
+  static Future<void> signInSilentlyAndLinkSupabase() async {
+    final googleSignIn = GoogleSignIn(
+      clientId: _platformClientId(),
+      serverClientId: AppConstants.kGoogleWebClientId,
+      scopes: _scopes,
+    );
+
+    // If already signed in to Supabase, nothing to do here.
+    if (_supabase.auth.currentUser != null) {
+      return;
+    }
+
+    GoogleSignInAccount? user = googleSignIn.currentUser;
+    user ??= await googleSignIn.signInSilently();
+    if (user == null) return;
+
+    final auth = await user.authentication;
+    final accessToken = auth.accessToken;
+    final idToken = auth.idToken;
+    if (idToken == null) return;
+
+    await _supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+  }
+
   // Retrieve Google OAuth access token (with YouTube scope) for API calls
   static Future<String?> getGoogleAccessToken() async {
     final googleSignIn = GoogleSignIn(
@@ -64,6 +94,13 @@ class AuthService {
 
   // Sign out
   static Future<void> signOut() async {
+    // Also sign out of Google to avoid silent auto re-link on next launch
+    final googleSignIn = GoogleSignIn(
+      clientId: _platformClientId(),
+      serverClientId: AppConstants.kGoogleWebClientId,
+      scopes: _scopes,
+    );
+    await googleSignIn.signOut();
     await _supabase.auth.signOut();
   }
 

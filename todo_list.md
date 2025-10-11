@@ -2,24 +2,24 @@
 
 ### 1) Auth & Scopes
 - [ ] Confirm Google OAuth client IDs match YouTube API project
-- [ ] Verify scope `https://www.googleapis.com/auth/youtube.readonly` is requested
-- [ ] Handle silent sign-in and token refresh on app start
+- [x] Verify scope `https://www.googleapis.com/auth/youtube.readonly` is requested
+- [x] Handle silent sign-in and token refresh on app start
 
 ### 2) Mobile App: YouTube Data Sync → Supabase
-- [ ] Fetch ALL subscriptions via pagination (already implemented)
-- [ ] Fetch liked videos via pagination, cap at 800 (already implemented)
-- [ ] Add retry/backoff on 429/5xx responses
-- [ ] Add sync timestamps per user (store last_successful_sync)
-- [ ] Add manual “Full sync to Supabase” UI action (already implemented)
-- [ ] Show counts and errors in UI (already implemented basic message)
+- [x] Fetch ALL subscriptions via pagination (already implemented)
+- [x] Fetch liked videos via pagination, cap at 800 (already implemented)
+- [x] Add retry/backoff on 429/5xx responses
+- [x] Add sync timestamps per user (store last_successful_sync)
+- [x] Add manual “Full sync to Supabase” UI action (already implemented)
+- [x] Show counts and errors in UI (already implemented basic message)
 
 ### 3) Supabase Schema & RLS
-- [ ] Ensure tables exist (see README):
-  - [ ] `youtube_subscriptions(user_id, channel_id, title, thumbnail_url, inserted_at)`
-  - [ ] `youtube_liked_videos(user_id, video_id, title, channel_title, thumbnail_url, published_at, inserted_at)`
-- [ ] Enable RLS on both tables
-- [ ] Add RLS policies (select/insert/update) scoped to `auth.uid()`
-- [ ] Create indexes: `(user_id, channel_id)` and `(user_id, video_id)` where needed
+- [x] Ensure tables exist (see README):
+  - [x] `youtube_subscriptions(user_id, channel_id, title, thumbnail_url, inserted_at)`
+  - [x] `youtube_liked_videos(user_id, video_id, title, channel_title, thumbnail_url, published_at, inserted_at)`
+- [x] Enable RLS on both tables
+- [x] Add RLS policies (select/insert/update) scoped to `auth.uid()`
+- [x] Create indexes: `(user_id, channel_id)` and `(user_id, video_id)` where needed
 
 ### 4) Optional Enrichment (Improves embeddings later)
 - [ ] Add `youtube_channels` table (id, title, description, thumbnails, updated_at)

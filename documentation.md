@@ -80,13 +80,19 @@ These clusters become **chat groups or discovery circles** inside Asteri.
 |Table|Columns|Purpose|
 |---|---|---|
 |**users**|id, name, email, google_id, youtube_url, pinterest_url, created_at|user info|
-|**embeddings**|user_id (FK), source (‘youtube’, ‘pinterest’), vector (float[])|store interest vectors|
+|**user_embeddings**|user_id (FK), source (‘youtube’), vector (pgvector 3072), updated_at|store per-user vector|
 |**clusters**|cluster_id, centroid_vector, created_at|store cluster centroids|
 |**user_clusters**|user_id (FK), cluster_id (FK), similarity_score|store final user–cluster mapping|
 
 ---
 
-##  **4. Matching Algorithm (Example)**
+##  **4. Embedding Pipeline (Supabase Edge Function)**
+
+- Client collects YouTube texts (channel titles, liked video titles) and calls Supabase Edge Function `embed_youtube` with body `{ texts, model: 'text-embedding-3-large', source: 'youtube' }`.
+- Edge function calls OpenAI embeddings, mean-pools the vectors, and upserts into `public.user_embeddings` for the authenticated user.
+- Client shows the embedded item count.
+
+##  **5. Matching Algorithm (Example)**
 
 ```python
 import numpy as np

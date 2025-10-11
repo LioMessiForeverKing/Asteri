@@ -84,6 +84,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _syncToSupabase({bool full = true}) async {
     try {
+      // Show blocking loading overlay
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      // First, upsert raw items so you can inspect saved data in Supabase
       final subCount = await YouTubeService.syncSubscriptionsToSupabase(
         full: full,
         maxResults: 25,
@@ -92,15 +99,31 @@ class _HomePageState extends State<HomePage> {
         full: full,
         maxResults: 25,
       );
+      // Then compute embeddings and assign cluster
+      final embeddedCount = await YouTubeService.embedUserYouTubeProfile(
+        full: full,
+      );
+      // After embedding, assign to a cluster
+      final assign = await YouTubeService.assignClusterForUser();
       if (!mounted) return;
       setState(() {
-        _syncInfo = 'Synced $subCount subs, $likeCount liked videos';
+        final cid = assign['cluster_id'];
+        final sim = assign['similarity'];
+        _syncInfo = cid != null
+            ? 'Upserted $subCount subs, $likeCount likes • Embedded $embeddedCount • Cluster $cid (sim: ${sim?.toStringAsFixed(3) ?? sim})'
+            : 'Upserted $subCount subs, $likeCount likes • Embedded $embeddedCount (cluster pending)';
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString();
       });
+    } finally {
+      // Dismiss loader if shown (avoid return in finally)
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.pop();
+      }
     }
   }
 
@@ -121,10 +144,11 @@ class _HomePageState extends State<HomePage> {
         _error = e.toString();
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -145,8 +169,10 @@ class _HomePageState extends State<HomePage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   ElevatedButton(
                     onPressed: _busy
@@ -160,22 +186,17 @@ class _HomePageState extends State<HomePage> {
                           )
                         : Text(signedIn ? 'Sign out' : 'Sign in with Google'),
                   ),
-                  const SizedBox(width: 8),
                   if (signedIn)
-                    Row(
-                      children: [
-                        OutlinedButton(
-                          onPressed: _busy ? null : _loadSubscriptions,
-                          child: const Text('Refresh list'),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _syncToSupabase(full: true),
-                          child: const Text('Full sync to Supabase'),
-                        ),
-                      ],
+                    OutlinedButton(
+                      onPressed: _busy ? null : _loadSubscriptions,
+                      child: const Text('Refresh list'),
+                    ),
+                  if (signedIn)
+                    OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _syncToSupabase(full: true),
+                      child: const Text('Embed + Assign'),
                     ),
                 ],
               ),

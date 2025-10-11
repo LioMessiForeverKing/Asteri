@@ -41,6 +41,12 @@ create policy "own rows update" on public.youtube_liked_videos for update using 
 
 Run this SQL in Supabase SQL editor before using the sync feature.
 
+## Setup
+
+1) Add your Supabase URL and anon key in `lib/utils/constants.dart`.
+2) Add your Google OAuth Client IDs (Web and iOS) in `lib/utils/constants.dart`.
+3) Ensure the Google OAuth project has YouTube Data API v3 enabled and the client IDs match.
+
 # takeapp
 
 A new Flutter project.
