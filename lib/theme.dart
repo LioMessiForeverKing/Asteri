@@ -3,52 +3,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Asteria App Theme
-/// Paper-inspired animated cartoon aesthetic with warm, inviting colors
+/// Sophisticated minimalist aesthetic with warm, elegant colors
 class AsteriaTheme {
   // ==================== COLOR PALETTE ====================
 
-  // Background Colors - Warm paper tones
-  static const Color backgroundPrimary = Color(0xFFFFFBF5);
-  static const Color backgroundSecondary = Color(0xFFFFF8F0);
-  static const Color backgroundTertiary = Color(0xFFFFF4E6);
+  // Background Colors - Warm, sophisticated tones
+  static const Color backgroundPrimary = Color(0xFFF8F5F0); // Warm beige/cream
+  static const Color backgroundSecondary = Color(
+    0xFFF5F2ED,
+  ); // Slightly darker beige
+  static const Color backgroundTertiary = Color(0xFFF0EDE8); // Subtle variation
 
-  // Primary Colors - Warm coral/terracotta
-  static const Color primaryColor = Color(0xFFE57A6F);
-  static const Color primaryLight = Color(0xFFFF8B7B);
-  static const Color primaryDark = Color(0xFFD0685E);
+  // Primary Colors - Rich terracotta/burnt orange
+  static const Color primaryColor = Color(0xFFA0522D); // Terracotta
+  static const Color primaryLight = Color(0xFFCD5C5C); // Lighter terracotta
+  static const Color primaryDark = Color(0xFF8B4513); // Darker terracotta
 
-  // Secondary Colors - Soft purple
-  static const Color secondaryColor = Color(0xFFB8A9D4);
-  static const Color secondaryLight = Color(0xFFC9BFDF);
-  static const Color secondaryDark = Color(0xFFA394C3);
+  // Secondary Colors - Sophisticated charcoal
+  static const Color secondaryColor = Color(0xFF2F2F2F); // Dark charcoal
+  static const Color secondaryLight = Color(0xFF4A4A4A); // Medium charcoal
+  static const Color secondaryDark = Color(0xFF1A1A1A); // Dark charcoal
 
-  // Accent Colors - Playful yellow/gold
-  static const Color accentColor = Color(0xFFFFD166);
-  static const Color accentLight = Color(0xFFFFE699);
-  static const Color accentDark = Color(0xFFE6BC5C);
+  // Accent Colors - Clean white for contrast
+  static const Color accentColor = Color(0xFFFFFFFF); // Pure white
+  static const Color accentLight = Color(0xFFF8F8F8); // Off-white
+  static const Color accentDark = Color(0xFFE8E8E8); // Light grey
 
-  // Text Colors - Warm, readable tones
-  static const Color textPrimary = Color(0xFF2D3142);
-  static const Color textSecondary = Color(0xFF75747C);
-  static const Color textTertiary = Color(0xFFA8A7AE);
-  static const Color textOnPrimary = Color(0xFFFFFBF5);
+  // Text Colors - Sophisticated, readable tones
+  static const Color textPrimary = Color(0xFF1A1A1A); // Dark charcoal
+  static const Color textSecondary = Color(0xFF4A4A4A); // Medium grey
+  static const Color textTertiary = Color(0xFF757575); // Light grey
+  static const Color textOnPrimary = Color(0xFFFFFFFF); // White on dark
 
-  // Additional Colors
-  static const Color successColor = Color(0xFF8FCB9B);
-  static const Color warningColor = Color(0xFFFFB84D);
-  static const Color errorColor = Color(0xFFE8747C);
-  static const Color infoColor = Color(0xFF82B4D4);
+  // Additional Colors - Muted, sophisticated
+  static const Color successColor = Color(0xFF4CAF50); // Clean green
+  static const Color warningColor = Color(0xFFFF9800); // Orange
+  static const Color errorColor = Color(0xFFE57373); // Soft red
+  static const Color infoColor = Color(0xFF64B5F6); // Clean blue
 
-  // Shadow Colors - Warm, soft shadows
-  static const Color shadowLight = Color(0x15D0685E);
-  static const Color shadowMedium = Color(0x25D0685E);
-  static const Color shadowDark = Color(0x35D0685E);
+  // Shadow Colors - Subtle, clean shadows
+  static const Color shadowLight = Color(0x0A000000); // Very light black
+  static const Color shadowMedium = Color(0x15000000); // Light black
+  static const Color shadowDark = Color(0x25000000); // Medium black
 
   // ==================== BORDER RADIUS ====================
-  static const double radiusSmall = 12.0;
-  static const double radiusMedium = 16.0;
-  static const double radiusLarge = 24.0;
-  static const double radiusXLarge = 32.0;
+  static const double radiusSmall = 8.0; // Subtle rounding
+  static const double radiusMedium = 12.0; // Standard rounding
+  static const double radiusLarge = 16.0; // Generous rounding
+  static const double radiusXLarge = 24.0; // Pill-shaped elements
 
   // ==================== SPACING ====================
   static const double spacingXSmall = 4.0;
@@ -59,144 +61,145 @@ class AsteriaTheme {
   static const double spacingXXLarge = 48.0;
 
   // ==================== ELEVATION ====================
-  static const double elevationLow = 2.0;
-  static const double elevationMedium = 4.0;
-  static const double elevationHigh = 8.0;
-  static const double elevationXHigh = 12.0;
+  static const double elevationLow = 1.0; // Subtle elevation
+  static const double elevationMedium = 2.0; // Standard elevation
+  static const double elevationHigh = 4.0; // High elevation
+  static const double elevationXHigh = 8.0; // Maximum elevation
 
   // ==================== TEXT STYLES ====================
 
-  // Display Styles - Quicksand
+  // Display Styles - Serif for elegance
   static const TextStyle displayLarge = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Playfair Display', // Elegant serif
     fontSize: 57,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w400, // Lighter weight for sophistication
+    height: 1.1,
+    letterSpacing: -0.5,
+    color: textPrimary,
+  );
+
+  static const TextStyle displayMedium = TextStyle(
+    fontFamily: 'Playfair Display',
+    fontSize: 45,
+    fontWeight: FontWeight.w400,
     height: 1.15,
     letterSpacing: -0.25,
     color: textPrimary,
   );
 
-  static const TextStyle displayMedium = TextStyle(
-    fontFamily: 'Quicksand',
-    fontSize: 45,
-    fontWeight: FontWeight.w700,
+  static const TextStyle displaySmall = TextStyle(
+    fontFamily: 'Playfair Display',
+    fontSize: 36,
+    fontWeight: FontWeight.w400,
     height: 1.2,
     color: textPrimary,
   );
 
-  static const TextStyle displaySmall = TextStyle(
-    fontFamily: 'Quicksand',
-    fontSize: 36,
-    fontWeight: FontWeight.w600,
-    height: 1.25,
-    color: textPrimary,
-  );
-
-  // Headline Styles - Quicksand
+  // Headline Styles - Serif for main headings
   static const TextStyle headlineLarge = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Playfair Display',
     fontSize: 32,
-    fontWeight: FontWeight.w600,
-    height: 1.25,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
     color: textPrimary,
   );
 
   static const TextStyle headlineMedium = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Playfair Display',
     fontSize: 28,
-    fontWeight: FontWeight.w600,
-    height: 1.3,
+    fontWeight: FontWeight.w400,
+    height: 1.25,
     color: textPrimary,
   );
 
   static const TextStyle headlineSmall = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Playfair Display',
     fontSize: 24,
-    fontWeight: FontWeight.w600,
-    height: 1.35,
+    fontWeight: FontWeight.w400,
+    height: 1.3,
     color: textPrimary,
   );
 
-  // Title Styles - Quicksand
+  // Title Styles - Clean sans-serif
   static const TextStyle titleLarge = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Inter', // Clean, modern sans-serif
     fontSize: 22,
-    fontWeight: FontWeight.w600,
-    height: 1.35,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
     color: textPrimary,
   );
 
   static const TextStyle titleMedium = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Inter',
     fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+    letterSpacing: 0.1,
+    color: textPrimary,
+  );
+
+  static const TextStyle titleSmall = TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+    letterSpacing: 0.1,
+    color: textPrimary,
+  );
+
+  // Body Styles - Clean sans-serif
+  static const TextStyle bodyLarge = TextStyle(
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
     height: 1.5,
     letterSpacing: 0.15,
     color: textPrimary,
   );
 
-  static const TextStyle titleSmall = TextStyle(
-    fontFamily: 'Quicksand',
+  static const TextStyle bodyMedium = TextStyle(
+    fontFamily: 'Inter',
     fontSize: 14,
-    fontWeight: FontWeight.w600,
-    height: 1.45,
+    fontWeight: FontWeight.w400,
+    height: 1.4,
     letterSpacing: 0.1,
     color: textPrimary,
   );
 
-  // Body Styles - Figtree
-  static const TextStyle bodyLarge = TextStyle(
-    fontFamily: 'Figtree',
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    height: 1.5,
-    letterSpacing: 0.5,
-    color: textPrimary,
-  );
-
-  static const TextStyle bodyMedium = TextStyle(
-    fontFamily: 'Figtree',
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    height: 1.45,
-    letterSpacing: 0.25,
-    color: textPrimary,
-  );
-
   static const TextStyle bodySmall = TextStyle(
-    fontFamily: 'Figtree',
+    fontFamily: 'Inter',
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    height: 1.4,
-    letterSpacing: 0.4,
+    height: 1.3,
+    letterSpacing: 0.1,
     color: textSecondary,
   );
 
-  // Label Styles - Quicksand
+  // Label Styles - Clean sans-serif
   static const TextStyle labelLarge = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Inter',
     fontSize: 14,
-    fontWeight: FontWeight.w600,
-    height: 1.45,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
     letterSpacing: 0.1,
     color: textPrimary,
   );
 
   static const TextStyle labelMedium = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Inter',
     fontSize: 12,
-    fontWeight: FontWeight.w600,
-    height: 1.35,
-    letterSpacing: 0.5,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
+    letterSpacing: 0.1,
     color: textPrimary,
   );
 
   static const TextStyle labelSmall = TextStyle(
-    fontFamily: 'Quicksand',
+    fontFamily: 'Inter',
     fontSize: 11,
-    fontWeight: FontWeight.w600,
-    height: 1.45,
-    letterSpacing: 0.5,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
+    letterSpacing: 0.1,
     color: textSecondary,
   );
 
@@ -261,88 +264,92 @@ class AsteriaTheme {
         labelSmall: labelSmall,
       ),
 
-      // AppBar Theme
+      // AppBar Theme - Clean and minimal
       appBarTheme: const AppBarTheme(
         elevation: 0,
-        scrolledUnderElevation: elevationMedium,
+        scrolledUnderElevation: elevationLow,
         centerTitle: false,
         backgroundColor: backgroundPrimary,
         foregroundColor: textPrimary,
         surfaceTintColor: Colors.transparent,
-        shadowColor: shadowMedium,
+        shadowColor: shadowLight,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
         titleTextStyle: TextStyle(
-          fontFamily: 'Quicksand',
+          fontFamily: 'Playfair Display',
           fontSize: 24,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w400,
           color: textPrimary,
         ),
       ),
 
-      // Card Theme - Paper-like cards
+      // Card Theme - Clean, minimal cards
       cardTheme: CardThemeData(
-        elevation: elevationMedium,
+        elevation: elevationLow,
         color: backgroundSecondary,
         surfaceTintColor: Colors.transparent,
-        shadowColor: shadowMedium,
+        shadowColor: shadowLight,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLarge),
+          borderRadius: BorderRadius.circular(radiusMedium),
         ),
         margin: const EdgeInsets.all(spacingSmall),
       ),
 
-      // Elevated Button Theme
+      // Elevated Button Theme - Dark sophisticated style
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          elevation: elevationMedium,
-          backgroundColor: primaryColor,
-          foregroundColor: textOnPrimary,
+          elevation: elevationLow,
+          backgroundColor: secondaryColor, // Dark charcoal background
+          foregroundColor: accentColor, // White text
           disabledBackgroundColor: textTertiary,
           disabledForegroundColor: backgroundPrimary,
           shadowColor: shadowMedium,
           padding: const EdgeInsets.symmetric(
-            horizontal: spacingLarge,
+            horizontal: spacingXLarge,
             vertical: spacingMedium,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMedium),
+            borderRadius: BorderRadius.circular(radiusXLarge), // Pill shape
+            side: const BorderSide(
+              color: Color(0xFFE0E0E0),
+              width: 1,
+            ), // Light border
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Quicksand',
+            fontFamily: 'Inter',
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
           ),
         ),
       ),
 
-      // Outlined Button Theme
+      // Outlined Button Theme - Terracotta outline
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryColor,
           disabledForegroundColor: textTertiary,
-          side: const BorderSide(color: primaryColor, width: 2),
+          side: const BorderSide(color: primaryColor, width: 1.5),
           padding: const EdgeInsets.symmetric(
-            horizontal: spacingLarge,
+            horizontal: spacingXLarge,
             vertical: spacingMedium,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMedium),
+            borderRadius: BorderRadius.circular(radiusXLarge),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Quicksand',
+            fontFamily: 'Inter',
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
           ),
         ),
       ),
 
-      // Text Button Theme
+      // Text Button Theme - Clean minimal style
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
@@ -355,21 +362,21 @@ class AsteriaTheme {
             borderRadius: BorderRadius.circular(radiusSmall),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'Quicksand',
+            fontFamily: 'Inter',
             fontSize: 14,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
           ),
         ),
       ),
 
-      // Floating Action Button Theme
+      // Floating Action Button Theme - Terracotta accent
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        elevation: elevationHigh,
-        backgroundColor: accentColor,
-        foregroundColor: textPrimary,
+        elevation: elevationMedium,
+        backgroundColor: primaryColor, // Terracotta
+        foregroundColor: accentColor, // White
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(radiusMedium)),
+          borderRadius: BorderRadius.all(Radius.circular(radiusLarge)),
         ),
       ),
 
@@ -589,14 +596,33 @@ class AsteriaTheme {
 
   // ==================== CUSTOM DECORATIONS ====================
 
-  /// Paper card decoration with warm shadows
-  static BoxDecoration paperCardDecoration({
+  /// Clean card decoration with subtle shadows
+  static BoxDecoration cleanCardDecoration({
     Color? backgroundColor,
     double? elevation,
   }) {
     return BoxDecoration(
       color: backgroundColor ?? backgroundSecondary,
-      borderRadius: BorderRadius.circular(radiusLarge),
+      borderRadius: BorderRadius.circular(radiusMedium),
+      boxShadow: [
+        BoxShadow(
+          color: shadowLight,
+          offset: Offset(0, elevation ?? elevationLow),
+          blurRadius: (elevation ?? elevationLow) * 2,
+          spreadRadius: 0,
+        ),
+      ],
+    );
+  }
+
+  /// Elevated card decoration for important elements
+  static BoxDecoration elevatedCardDecoration({
+    Color? backgroundColor,
+    double? elevation,
+  }) {
+    return BoxDecoration(
+      color: backgroundColor ?? backgroundPrimary,
+      borderRadius: BorderRadius.circular(radiusMedium),
       boxShadow: [
         BoxShadow(
           color: shadowMedium,
@@ -604,173 +630,127 @@ class AsteriaTheme {
           blurRadius: (elevation ?? elevationMedium) * 2,
           spreadRadius: 0,
         ),
-        BoxShadow(
-          color: shadowLight,
-          offset: Offset(0, (elevation ?? elevationMedium) / 2),
-          blurRadius: elevation ?? elevationMedium,
-          spreadRadius: -1,
-        ),
       ],
     );
   }
 
-  /// Glowing card decoration for special elements
-  static BoxDecoration glowingCardDecoration({
-    Color? backgroundColor,
-    Color? glowColor,
-    double? glowIntensity,
-  }) {
-    return BoxDecoration(
-      color: backgroundColor ?? backgroundSecondary,
-      borderRadius: BorderRadius.circular(radiusLarge),
-      boxShadow: [
-        BoxShadow(
-          color: (glowColor ?? primaryColor).withValues(
-            alpha: glowIntensity ?? 0.3,
-          ),
-          offset: const Offset(0, 0),
-          blurRadius: 20,
-          spreadRadius: 2,
-        ),
-        BoxShadow(
-          color: shadowMedium,
-          offset: const Offset(0, elevationMedium),
-          blurRadius: elevationMedium * 2,
-          spreadRadius: 0,
-        ),
-      ],
-    );
-  }
-
-  /// Floating element decoration
-  static BoxDecoration floatingDecoration({
+  /// Pill-shaped decoration for buttons and special elements
+  static BoxDecoration pillDecoration({
     Color? backgroundColor,
     double? elevation,
   }) {
     return BoxDecoration(
-      color: backgroundColor ?? backgroundPrimary,
+      color: backgroundColor ?? backgroundSecondary,
       borderRadius: BorderRadius.circular(radiusXLarge),
       boxShadow: [
         BoxShadow(
-          color: shadowDark,
-          offset: Offset(0, elevation ?? elevationHigh),
-          blurRadius: (elevation ?? elevationHigh) * 3,
-          spreadRadius: -2,
-        ),
-        BoxShadow(
-          color: shadowMedium,
-          offset: Offset(0, (elevation ?? elevationHigh) / 2),
-          blurRadius: (elevation ?? elevationHigh) * 2,
-          spreadRadius: -4,
-        ),
-      ],
-    );
-  }
-
-  /// Elevated paper decoration with higher shadow
-  static BoxDecoration elevatedPaperDecoration({Color? backgroundColor}) {
-    return BoxDecoration(
-      color: backgroundColor ?? backgroundPrimary,
-      borderRadius: BorderRadius.circular(radiusLarge),
-      boxShadow: const [
-        BoxShadow(
-          color: shadowDark,
-          offset: Offset(0, elevationHigh),
-          blurRadius: elevationHigh * 2,
+          color: shadowLight,
+          offset: Offset(0, elevation ?? elevationLow),
+          blurRadius: (elevation ?? elevationLow) * 2,
           spreadRadius: 0,
         ),
-        BoxShadow(
-          color: shadowMedium,
-          offset: Offset(0, elevationMedium),
-          blurRadius: elevationMedium * 2,
-          spreadRadius: -2,
-        ),
       ],
     );
   }
 
-  /// Subtle inner shadow decoration (for pressed states)
-  static BoxDecoration insetPaperDecoration({Color? backgroundColor}) {
+  /// Subtle border decoration
+  static BoxDecoration borderDecoration({
+    Color? backgroundColor,
+    Color? borderColor,
+  }) {
     return BoxDecoration(
-      color: backgroundColor ?? backgroundTertiary,
+      color: backgroundColor ?? backgroundPrimary,
       borderRadius: BorderRadius.circular(radiusMedium),
-      boxShadow: const [
-        BoxShadow(
-          color: shadowLight,
-          offset: Offset(0, 2),
-          blurRadius: 4,
-          spreadRadius: -2,
-        ),
-      ],
+      border: Border.all(
+        color: borderColor ?? const Color(0xFFE0E0E0),
+        width: 1,
+      ),
     );
   }
 
-  /// Gradient overlay for special sections
+  // ==================== LEGACY DECORATION METHODS ====================
+  // These methods are kept for backward compatibility with existing pages
+
+  /// Legacy paper card decoration - now uses clean card style
+  static BoxDecoration paperCardDecoration({
+    Color? backgroundColor,
+    double? elevation,
+  }) {
+    return cleanCardDecoration(
+      backgroundColor: backgroundColor,
+      elevation: elevation,
+    );
+  }
+
+  /// Legacy elevated paper decoration - now uses elevated card style
+  static BoxDecoration elevatedPaperDecoration({Color? backgroundColor}) {
+    return elevatedCardDecoration(backgroundColor: backgroundColor);
+  }
+
+  /// Legacy gradient overlay decoration - now uses clean gradient
   static BoxDecoration gradientOverlayDecoration({List<Color>? colors}) {
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors:
-            colors ??
-            [backgroundPrimary, backgroundSecondary, backgroundTertiary],
+        colors: colors ?? [backgroundPrimary, backgroundSecondary],
       ),
-      borderRadius: BorderRadius.circular(radiusLarge),
+      borderRadius: BorderRadius.circular(radiusMedium),
     );
   }
 
   // ==================== ANIMATION UTILITIES ====================
 
-  /// Standard animation durations
-  static const Duration animationFast = Duration(milliseconds: 200);
-  static const Duration animationMedium = Duration(milliseconds: 400);
-  static const Duration animationSlow = Duration(milliseconds: 600);
-  static const Duration animationVerySlow = Duration(milliseconds: 1000);
+  /// Standard animation durations - subtle and refined
+  static const Duration animationFast = Duration(milliseconds: 150);
+  static const Duration animationMedium = Duration(milliseconds: 300);
+  static const Duration animationSlow = Duration(milliseconds: 500);
+  static const Duration animationVerySlow = Duration(milliseconds: 800);
 
-  /// Standard animation curves
+  /// Standard animation curves - elegant and smooth
   static const Curve curveElegant = Curves.easeInOutCubic;
-  static const Curve curveBouncy = Curves.elasticOut;
   static const Curve curveSmooth = Curves.easeOutQuart;
-  static const Curve curveSharp = Curves.easeInOutBack;
+  static const Curve curveSubtle = Curves.easeInOut;
+  static const Curve curveGentle = Curves.easeOutCubic;
 
   /// Create a staggered animation delay
   static Duration staggeredDelay(
     int index, {
-    Duration baseDelay = const Duration(milliseconds: 100),
+    Duration baseDelay = const Duration(milliseconds: 50),
   }) {
     return Duration(milliseconds: baseDelay.inMilliseconds * index);
   }
 
-  /// Create a breathing animation value
-  static double breathingValue(
+  /// Create a subtle fade animation value
+  static double fadeValue(
     double animationValue, {
-    double minScale = 0.95,
-    double maxScale = 1.05,
+    double minOpacity = 0.0,
+    double maxOpacity = 1.0,
   }) {
-    return minScale +
-        (maxScale - minScale) *
-            (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi));
+    return minOpacity +
+        (maxOpacity - minOpacity) *
+            (0.5 + 0.5 * math.sin(animationValue * math.pi));
   }
 
-  /// Create a pulsing animation value
-  static double pulsingValue(
+  /// Create a gentle scale animation value
+  static double scaleValue(
     double animationValue, {
-    double minScale = 0.8,
-    double maxScale = 1.2,
+    double minScale = 0.95,
+    double maxScale = 1.0,
   }) {
     return minScale +
         (maxScale - minScale) *
             (0.5 + 0.5 * math.sin(animationValue * math.pi));
   }
 
-  /// Create a morphing animation value
-  static double morphingValue(
+  /// Create a smooth slide animation value
+  static double slideValue(
     double animationValue, {
-    double minScale = 0.0,
-    double maxScale = 1.0,
+    double minOffset = 0.0,
+    double maxOffset = 1.0,
   }) {
-    return minScale +
-        (maxScale - minScale) *
+    return minOffset +
+        (maxOffset - minOffset) *
             (0.5 + 0.5 * math.sin(animationValue * math.pi));
   }
 }

@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/youtube_service.dart';
 import '../theme.dart';
-// import 'timer_page.dart';
 import 'community_page.dart';
 
 class LoadingPage extends StatefulWidget {
@@ -16,81 +14,65 @@ class LoadingPage extends StatefulWidget {
 
 class _LoadingPageState extends State<LoadingPage>
     with TickerProviderStateMixin {
-  late AnimationController _spinController;
-  late AnimationController _pulseController;
-  late AnimationController _breathController;
-  late AnimationController _morphController;
   late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late AnimationController _pulseController;
 
   String _statusMessage = 'Initializing...';
   double _progress = 0.0;
+  bool _showSignInButton = false;
 
   // Animation values
-  late Animation<double> _spinAnimation;
-  late Animation<double> _pulseAnimation;
-  late Animation<double> _breathAnimation;
-  late Animation<double> _morphAnimation;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Setup multiple animation controllers
-    _spinController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+    // Setup animation controllers
+    _fadeController = AnimationController(
+      duration: AsteriaTheme.animationMedium,
+      vsync: this,
+    );
+
+    _scaleController = AnimationController(
+      duration: AsteriaTheme.animationSlow,
       vsync: this,
     );
 
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _breathController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
-      vsync: this,
-    );
-
-    _morphController = AnimationController(
-      duration: const Duration(milliseconds: 4000),
-      vsync: this,
-    );
-
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
     // Setup animations
-    _spinAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _spinController, curve: Curves.linear));
-
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: AsteriaTheme.curveElegant,
+      ),
     );
 
-    _breathAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _breathController, curve: Curves.easeInOut),
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _scaleController,
+        curve: AsteriaTheme.curveSmooth,
+      ),
     );
 
-    _morphAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _morphController, curve: Curves.easeInOut),
+    _pulseAnimation = Tween<double>(begin: 0.98, end: 1.02).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: AsteriaTheme.curveSubtle,
+      ),
     );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     // Start animations
-    _spinController.repeat();
-    _pulseController.repeat(reverse: true);
-    _breathController.repeat(reverse: true);
-    _morphController.repeat();
     _fadeController.forward();
+    _scaleController.forward();
+    _pulseController.repeat(reverse: true);
 
     // Start the data processing
     _startProcessing();
@@ -98,11 +80,9 @@ class _LoadingPageState extends State<LoadingPage>
 
   @override
   void dispose() {
-    _spinController.dispose();
-    _pulseController.dispose();
-    _breathController.dispose();
-    _morphController.dispose();
     _fadeController.dispose();
+    _scaleController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -177,54 +157,33 @@ class _LoadingPageState extends State<LoadingPage>
         _progress = 1.0;
       });
 
-      // Start slowing down the spin
-      _slowDownAndStop();
+      // Show sign-in button after completion
+      await Future.delayed(const Duration(milliseconds: 1000));
+      if (!mounted) return;
+
+      setState(() {
+        _showSignInButton = true;
+      });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _statusMessage = 'Error: ${e.toString()}';
         _progress = 1.0;
+        _showSignInButton = true;
       });
-
-      // Still slow down even on error
-      _slowDownAndStop();
     }
   }
 
-  void _slowDownAndStop() async {
-    // Stop the infinite loop
-    _spinController.stop();
-
-    // Create a deceleration animation
-    _spinController.duration = const Duration(milliseconds: 2000);
-
-    // Animate from current position to next full rotation (1.0)
-    await _spinController.animateTo(1.0, curve: Curves.easeOutCubic);
-
-    // Wait a moment before transitioning
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (!mounted) return;
-
-    // Navigate to communities page (keep TimerPage in project)
+  void _navigateToCommunity() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const CommunityPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          // Paper flip transition
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
-              ),
-              child: child,
-            ),
-          );
+          return FadeTransition(opacity: animation, child: child);
         },
-        transitionDuration: const Duration(milliseconds: 600),
+        transitionDuration: AsteriaTheme.animationMedium,
       ),
     );
   }
@@ -232,414 +191,185 @@ class _LoadingPageState extends State<LoadingPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Enhanced gradient background
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AsteriaTheme.backgroundPrimary,
-                  AsteriaTheme.backgroundSecondary,
-                  AsteriaTheme.backgroundTertiary,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-            ),
-          ),
+      backgroundColor: AsteriaTheme.backgroundPrimary,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 3),
 
-          // Animated floating paper layers
-          AnimatedBuilder(
-            animation: _breathAnimation,
-            builder: (context, child) {
-              return Stack(
-                children: [
-                  // Top right floating element
-                  Positioned(
-                    top: -80 * _breathAnimation.value,
-                    right: -60 * _breathAnimation.value,
-                    child: Transform.scale(
-                      scale: _breathAnimation.value,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            colors: [
-                              AsteriaTheme.primaryLight.withValues(alpha: 0.3),
-                              AsteriaTheme.primaryColor.withValues(alpha: 0.1),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(90),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AsteriaTheme.primaryColor.withValues(
-                                alpha: 0.2,
+                // Main logo with subtle animation
+                AnimatedBuilder(
+                  animation: _scaleAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _pulseAnimation.value,
+                            child: Container(
+                              width: 120,
+                              height: 120,
+                              decoration: AsteriaTheme.cleanCardDecoration(),
+                              padding: const EdgeInsets.all(
+                                AsteriaTheme.spacingLarge,
                               ),
-                              blurRadius: 30,
-                              spreadRadius: 5,
+                              child: SvgPicture.asset(
+                                'assets/Logos/Asteri.svg',
+                                colorFilter: const ColorFilter.mode(
+                                  AsteriaTheme.primaryColor,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    ),
-                  ),
-
-                  // Bottom left floating element
-                  Positioned(
-                    bottom: -100 * _breathAnimation.value,
-                    left: -70 * _breathAnimation.value,
-                    child: Transform.scale(
-                      scale: _breathAnimation.value,
-                      child: Container(
-                        width: 220,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            colors: [
-                              AsteriaTheme.secondaryLight.withValues(
-                                alpha: 0.25,
-                              ),
-                              AsteriaTheme.secondaryColor.withValues(
-                                alpha: 0.1,
-                              ),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(110),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AsteriaTheme.secondaryColor.withValues(
-                                alpha: 0.15,
-                              ),
-                              blurRadius: 40,
-                              spreadRadius: 8,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          // Main content with enhanced animations
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Spacer(flex: 2),
-
-                    // Multi-layered animated logo
-                    AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _spinAnimation,
-                        _pulseAnimation,
-                        _breathAnimation,
-                        _morphAnimation,
-                      ]),
-                      builder: (context, child) {
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Outer pulsing ring
-                            Transform.scale(
-                              scale: _pulseAnimation.value,
-                              child: Container(
-                                width: 280,
-                                height: 280,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      AsteriaTheme.primaryColor.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      AsteriaTheme.primaryColor.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      Colors.transparent,
-                                    ],
-                                    stops: const [0.0, 0.7, 1.0],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Middle breathing ring
-                            Transform.scale(
-                              scale: _breathAnimation.value,
-                              child: Container(
-                                width: 240,
-                                height: 240,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AsteriaTheme.accentColor.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Main spinning logo container
-                            Transform.rotate(
-                              angle: _spinAnimation.value * 2 * math.pi,
-                              child: Transform.scale(
-                                scale: _breathAnimation.value,
-                                child: Container(
-                                  width: 200,
-                                  height: 200,
-                                  decoration:
-                                      AsteriaTheme.elevatedPaperDecoration(
-                                        backgroundColor:
-                                            AsteriaTheme.backgroundPrimary,
-                                      ),
-                                  padding: const EdgeInsets.all(
-                                    AsteriaTheme.spacingXLarge,
-                                  ),
-                                  child: SvgPicture.asset(
-                                    'assets/Logos/Asteri.svg',
-                                    width: 140,
-                                    height: 140,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Inner morphing accent
-                            Transform.scale(
-                              scale: 0.3 + (0.1 * _morphAnimation.value),
-                              child: Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      AsteriaTheme.accentColor.withValues(
-                                        alpha: 0.8,
-                                      ),
-                                      AsteriaTheme.primaryColor.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AsteriaTheme.accentColor
-                                          .withValues(alpha: 0.4),
-                                      blurRadius: 15,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: AsteriaTheme.spacingXXLarge),
-
-                    // Enhanced status message with animation
-                    AnimatedBuilder(
-                      animation: _fadeAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          padding: const EdgeInsets.all(
-                            AsteriaTheme.spacingXLarge,
-                          ),
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: AsteriaTheme.spacingLarge,
-                          ),
-                          decoration: AsteriaTheme.elevatedPaperDecoration(
-                            backgroundColor: AsteriaTheme.backgroundSecondary,
-                          ),
-                          child: Column(
-                            children: [
-                              // Status icon with pulse
-                              AnimatedBuilder(
-                                animation: _pulseAnimation,
-                                builder: (context, child) {
-                                  return Transform.scale(
-                                    scale: _pulseAnimation.value,
-                                    child: Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            AsteriaTheme.primaryColor,
-                                            AsteriaTheme.primaryLight,
-                                          ],
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AsteriaTheme.primaryColor
-                                                .withValues(alpha: 0.3),
-                                            blurRadius: 15,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.auto_awesome_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const SizedBox(height: AsteriaTheme.spacingLarge),
-
-                              // Status text with better typography
-                              Text(
-                                _statusMessage,
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(
-                                      color: AsteriaTheme.primaryColor,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
-
-                              const SizedBox(height: AsteriaTheme.spacingLarge),
-
-                              // Enhanced progress bar
-                              Container(
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(
-                                    AsteriaTheme.radiusMedium,
-                                  ),
-                                  color: AsteriaTheme.backgroundTertiary,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AsteriaTheme.shadowLight,
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(
-                                    AsteriaTheme.radiusMedium,
-                                  ),
-                                  child: LinearProgressIndicator(
-                                    value: _progress,
-                                    backgroundColor: Colors.transparent,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      AsteriaTheme.primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(
-                                height: AsteriaTheme.spacingMedium,
-                              ),
-
-                              // Progress percentage
-                              Text(
-                                '${(_progress * 100).round()}%',
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(
-                                      color: AsteriaTheme.textSecondary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-
-                    const Spacer(flex: 2),
-
-                    // Enhanced hint text with animation
-                    AnimatedBuilder(
-                      animation: _fadeAnimation,
-                      builder: (context, child) {
-                        return Padding(
-                          padding: const EdgeInsets.all(
-                            AsteriaTheme.spacingXLarge,
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Building your connection network...',
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      color: AsteriaTheme.textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
-
-                              const SizedBox(height: AsteriaTheme.spacingSmall),
-
-                              // Animated dots
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(3, (index) {
-                                  return AnimatedBuilder(
-                                    animation: _pulseAnimation,
-                                    builder: (context, child) {
-                                      final delay = index * 0.2;
-                                      final animationValue =
-                                          (_pulseAnimation.value + delay) % 1.0;
-                                      return Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal:
-                                              AsteriaTheme.spacingXSmall,
-                                        ),
-                                        child: Transform.scale(
-                                          scale: 0.5 + (0.5 * animationValue),
-                                          child: Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: AsteriaTheme.accentColor
-                                                  .withValues(
-                                                    alpha:
-                                                        0.3 +
-                                                        (0.7 * animationValue),
-                                                  ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                }),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
+
+                const SizedBox(height: AsteriaTheme.spacingXXLarge),
+
+                // Main heading
+                Text(
+                  'Find your constellation.',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: AsteriaTheme.textPrimary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: AsteriaTheme.spacingMedium),
+
+                // Subheading
+                Text(
+                  'CONNECT WITH PEOPLE WHO SEE THE WORLD LIKE YOU',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AsteriaTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: AsteriaTheme.spacingXXLarge),
+
+                // Status message and progress
+                if (!_showSignInButton) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AsteriaTheme.spacingLarge,
+                      vertical: AsteriaTheme.spacingMedium,
+                    ),
+                    decoration: AsteriaTheme.cleanCardDecoration(),
+                    child: Column(
+                      children: [
+                        Text(
+                          _statusMessage,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: AsteriaTheme.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AsteriaTheme.spacingMedium),
+                        Container(
+                          height: 4,
+                          width: 200,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(2),
+                            color: AsteriaTheme.backgroundTertiary,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: _progress,
+                              backgroundColor: Colors.transparent,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AsteriaTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Google Sign-In Button
+                if (_showSignInButton) ...[
+                  AnimatedBuilder(
+                    animation: _fadeAnimation,
+                    builder: (context, child) {
+                      return FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Container(
+                          width: 280,
+                          height: 50,
+                          decoration: AsteriaTheme.pillDecoration(
+                            backgroundColor: AsteriaTheme.secondaryColor,
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _navigateToCommunity,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AsteriaTheme.radiusXLarge,
+                                ),
+                                side: const BorderSide(
+                                  color: Color(0xFFE0E0E0),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Google Logo
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    image: DecorationImage(
+                                      image: NetworkImage(
+                                        'https://developers.google.com/identity/images/g-logo.png',
+                                      ),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: AsteriaTheme.spacingMedium,
+                                ),
+                                Text(
+                                  'Sign in with Google',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        color: AsteriaTheme.accentColor,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+
+                const Spacer(flex: 3),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
