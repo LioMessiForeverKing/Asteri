@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'loading_page.dart';
 import 'sign_in_page.dart';
-import 'timer_page.dart';
+import 'community_page.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -59,8 +59,8 @@ class AuthGate extends StatelessWidget {
               // User needs initial setup -> Show loading page
               return const LoadingPage();
             } else {
-              // User already set up -> Show timer page
-              return const TimerPage();
+              // User already set up -> Go to communities for now (keep TimerPage for later)
+              return const CommunityPage();
             }
           },
         );

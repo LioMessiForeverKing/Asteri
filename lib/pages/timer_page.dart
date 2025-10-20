@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'community_page.dart';
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -74,6 +75,24 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
         ),
       );
     }
+  }
+
+  Widget _buildDecorativeDot(Color color) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -242,46 +261,175 @@ class _TimerPageState extends State<TimerPage> with TickerProviderStateMixin {
 
                           const SizedBox(height: AsteriaTheme.spacingXLarge),
 
-                          // Subtitle or description
+                          // Inspirational message
                           Container(
                             padding: const EdgeInsets.all(
-                              AsteriaTheme.spacingLarge,
+                              AsteriaTheme.spacingXLarge,
                             ),
                             decoration: AsteriaTheme.paperCardDecoration(
                               backgroundColor: AsteriaTheme.backgroundSecondary,
                             ),
                             child: Column(
                               children: [
-                                Icon(
-                                  Icons.access_time_rounded,
-                                  size: 40,
-                                  color: AsteriaTheme.accentColor,
+                                // Beautiful icon with gradient background
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        AsteriaTheme.primaryColor,
+                                        AsteriaTheme.secondaryColor,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(40),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AsteriaTheme.primaryColor
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.people_rounded,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
                                 ),
+
+                                const SizedBox(
+                                  height: AsteriaTheme.spacingLarge,
+                                ),
+
+                                // Main inspirational message
+                                Text(
+                                  isNegative
+                                      ? 'Your journey has begun!'
+                                      : 'Your community awaits',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                        color: AsteriaTheme.primaryColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+
                                 const SizedBox(
                                   height: AsteriaTheme.spacingMedium,
                                 ),
+
+                                // Subtitle with better messaging
                                 Text(
                                   isNegative
-                                      ? 'The countdown has ended!'
-                                      : 'The countdown continues...',
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        color: AsteriaTheme.textPrimary,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(
-                                  height: AsteriaTheme.spacingSmall,
-                                ),
-                                Text(
-                                  'Your watch history reveals your connections',
-                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ? 'Connect with people who share your passions and discover your tribe'
+                                      : 'Every moment brings you closer to finding your perfect community',
+                                  style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(
                                         color: AsteriaTheme.textSecondary,
+                                        height: 1.5,
                                       ),
                                   textAlign: TextAlign.center,
                                 ),
+
+                                const SizedBox(
+                                  height: AsteriaTheme.spacingLarge,
+                                ),
+
+                                // Decorative elements
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildDecorativeDot(
+                                      AsteriaTheme.primaryColor,
+                                    ),
+                                    const SizedBox(
+                                      width: AsteriaTheme.spacingSmall,
+                                    ),
+                                    _buildDecorativeDot(
+                                      AsteriaTheme.secondaryColor,
+                                    ),
+                                    const SizedBox(
+                                      width: AsteriaTheme.spacingSmall,
+                                    ),
+                                    _buildDecorativeDot(
+                                      AsteriaTheme.accentColor,
+                                    ),
+                                  ],
+                                ),
                               ],
+                            ),
+                          ),
+
+                          const SizedBox(height: AsteriaTheme.spacingLarge),
+
+                          // Community Button
+                          Container(
+                            decoration: AsteriaTheme.paperCardDecoration(
+                              backgroundColor: AsteriaTheme.backgroundPrimary,
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  PageRouteBuilder(
+                                    pageBuilder:
+                                        (
+                                          context,
+                                          animation,
+                                          secondaryAnimation,
+                                        ) => const CommunityPage(),
+                                    transitionsBuilder:
+                                        (
+                                          context,
+                                          animation,
+                                          secondaryAnimation,
+                                          child,
+                                        ) {
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: ScaleTransition(
+                                              scale:
+                                                  Tween<double>(
+                                                    begin: 0.95,
+                                                    end: 1.0,
+                                                  ).animate(
+                                                    CurvedAnimation(
+                                                      parent: animation,
+                                                      curve: Curves.easeOutBack,
+                                                    ),
+                                                  ),
+                                              child: child,
+                                            ),
+                                          );
+                                        },
+                                    transitionDuration: const Duration(
+                                      milliseconds: 600,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.group_rounded),
+                              label: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: AsteriaTheme.spacingMedium,
+                                  vertical: AsteriaTheme.spacingSmall,
+                                ),
+                                child: Text(
+                                  'Community',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AsteriaTheme.primaryColor,
+                                foregroundColor: AsteriaTheme.textOnPrimary,
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                              ),
                             ),
                           ),
                         ],

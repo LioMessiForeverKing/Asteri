@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -613,6 +614,59 @@ class AsteriaTheme {
     );
   }
 
+  /// Glowing card decoration for special elements
+  static BoxDecoration glowingCardDecoration({
+    Color? backgroundColor,
+    Color? glowColor,
+    double? glowIntensity,
+  }) {
+    return BoxDecoration(
+      color: backgroundColor ?? backgroundSecondary,
+      borderRadius: BorderRadius.circular(radiusLarge),
+      boxShadow: [
+        BoxShadow(
+          color: (glowColor ?? primaryColor).withValues(
+            alpha: glowIntensity ?? 0.3,
+          ),
+          offset: const Offset(0, 0),
+          blurRadius: 20,
+          spreadRadius: 2,
+        ),
+        BoxShadow(
+          color: shadowMedium,
+          offset: const Offset(0, elevationMedium),
+          blurRadius: elevationMedium * 2,
+          spreadRadius: 0,
+        ),
+      ],
+    );
+  }
+
+  /// Floating element decoration
+  static BoxDecoration floatingDecoration({
+    Color? backgroundColor,
+    double? elevation,
+  }) {
+    return BoxDecoration(
+      color: backgroundColor ?? backgroundPrimary,
+      borderRadius: BorderRadius.circular(radiusXLarge),
+      boxShadow: [
+        BoxShadow(
+          color: shadowDark,
+          offset: Offset(0, elevation ?? elevationHigh),
+          blurRadius: (elevation ?? elevationHigh) * 3,
+          spreadRadius: -2,
+        ),
+        BoxShadow(
+          color: shadowMedium,
+          offset: Offset(0, (elevation ?? elevationHigh) / 2),
+          blurRadius: (elevation ?? elevationHigh) * 2,
+          spreadRadius: -4,
+        ),
+      ],
+    );
+  }
+
   /// Elevated paper decoration with higher shadow
   static BoxDecoration elevatedPaperDecoration({Color? backgroundColor}) {
     return BoxDecoration(
@@ -663,5 +717,60 @@ class AsteriaTheme {
       ),
       borderRadius: BorderRadius.circular(radiusLarge),
     );
+  }
+
+  // ==================== ANIMATION UTILITIES ====================
+
+  /// Standard animation durations
+  static const Duration animationFast = Duration(milliseconds: 200);
+  static const Duration animationMedium = Duration(milliseconds: 400);
+  static const Duration animationSlow = Duration(milliseconds: 600);
+  static const Duration animationVerySlow = Duration(milliseconds: 1000);
+
+  /// Standard animation curves
+  static const Curve curveElegant = Curves.easeInOutCubic;
+  static const Curve curveBouncy = Curves.elasticOut;
+  static const Curve curveSmooth = Curves.easeOutQuart;
+  static const Curve curveSharp = Curves.easeInOutBack;
+
+  /// Create a staggered animation delay
+  static Duration staggeredDelay(
+    int index, {
+    Duration baseDelay = const Duration(milliseconds: 100),
+  }) {
+    return Duration(milliseconds: baseDelay.inMilliseconds * index);
+  }
+
+  /// Create a breathing animation value
+  static double breathingValue(
+    double animationValue, {
+    double minScale = 0.95,
+    double maxScale = 1.05,
+  }) {
+    return minScale +
+        (maxScale - minScale) *
+            (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi));
+  }
+
+  /// Create a pulsing animation value
+  static double pulsingValue(
+    double animationValue, {
+    double minScale = 0.8,
+    double maxScale = 1.2,
+  }) {
+    return minScale +
+        (maxScale - minScale) *
+            (0.5 + 0.5 * math.sin(animationValue * math.pi));
+  }
+
+  /// Create a morphing animation value
+  static double morphingValue(
+    double animationValue, {
+    double minScale = 0.0,
+    double maxScale = 1.0,
+  }) {
+    return minScale +
+        (maxScale - minScale) *
+            (0.5 + 0.5 * math.sin(animationValue * math.pi));
   }
 }
