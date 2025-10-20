@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+// removed svg loader in favor of hourglass
 import '../services/youtube_service.dart';
+import '../services/openai_service.dart';
+import '../models/passion_graph.dart';
+import '../widgets/passion_graph.dart';
+import '../widgets/hourglass_loader.dart';
+import 'dart:math' as math;
 import '../theme.dart';
 import 'community_page.dart';
 
@@ -15,17 +20,14 @@ class LoadingPage extends StatefulWidget {
 class _LoadingPageState extends State<LoadingPage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
-  late AnimationController _scaleController;
-  late AnimationController _pulseController;
 
   String _statusMessage = 'Initializing...';
   double _progress = 0.0;
-  bool _showSignInButton = false;
+  bool _showContinue = false;
+  GraphSnapshot? _graph;
 
   // Animation values
   late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -37,16 +39,6 @@ class _LoadingPageState extends State<LoadingPage>
       vsync: this,
     );
 
-    _scaleController = AnimationController(
-      duration: AsteriaTheme.animationSlow,
-      vsync: this,
-    );
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
     // Setup animations
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -55,24 +47,8 @@ class _LoadingPageState extends State<LoadingPage>
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _scaleController,
-        curve: AsteriaTheme.curveSmooth,
-      ),
-    );
-
-    _pulseAnimation = Tween<double>(begin: 0.98, end: 1.02).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: AsteriaTheme.curveSubtle,
-      ),
-    );
-
     // Start animations
     _fadeController.forward();
-    _scaleController.forward();
-    _pulseController.repeat(reverse: true);
 
     // Start the data processing
     _startProcessing();
@@ -81,8 +57,6 @@ class _LoadingPageState extends State<LoadingPage>
   @override
   void dispose() {
     _fadeController.dispose();
-    _scaleController.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
@@ -142,7 +116,37 @@ class _LoadingPageState extends State<LoadingPage>
 
       if (!mounted) return;
 
-      // Step 5: Complete
+      // Step 5: Summarize passions via OpenAI and prepare graph
+      setState(() {
+        _statusMessage = 'Composing your knowledge map...';
+        _progress = 0.85;
+      });
+
+      final subs = await YouTubeService.fetchAllSubscriptions(pageSize: 50);
+      final likes = await YouTubeService.fetchAllLikedVideos(
+        pageSize: 50,
+        maxItems: 100,
+      );
+      final snapshot = await OpenAIService.summarizePassions(
+        subscriptions: subs,
+        likedVideos: likes,
+      );
+
+      // Seed initial circular layout
+      final int n = snapshot.nodes.length;
+      for (int i = 0; i < n; i++) {
+        final double angle = (i / n) * 6.28318530718; // 2*pi
+        snapshot.nodes[i].x = 140 * math.cos(angle);
+        snapshot.nodes[i].y = 140 * math.sin(angle);
+      }
+
+      setState(() {
+        _graph = snapshot;
+        _statusMessage = 'Almost ready...';
+        _progress = 0.95;
+      });
+
+      // Step 6: Complete
       setState(() {
         _statusMessage = 'Almost ready...';
         _progress = 0.9;
@@ -157,12 +161,12 @@ class _LoadingPageState extends State<LoadingPage>
         _progress = 1.0;
       });
 
-      // Show sign-in button after completion
+      // Show instruction then Continue after delay
       await Future.delayed(const Duration(milliseconds: 1000));
       if (!mounted) return;
 
       setState(() {
-        _showSignInButton = true;
+        _showContinue = true;
       });
     } catch (e) {
       if (!mounted) return;
@@ -170,7 +174,7 @@ class _LoadingPageState extends State<LoadingPage>
       setState(() {
         _statusMessage = 'Error: ${e.toString()}';
         _progress = 1.0;
-        _showSignInButton = true;
+        _showContinue = true;
       });
     }
   }
@@ -191,183 +195,145 @@ class _LoadingPageState extends State<LoadingPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AsteriaTheme.backgroundPrimary,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(flex: 3),
-
-                // Main logo with subtle animation
-                AnimatedBuilder(
-                  animation: _scaleAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: AnimatedBuilder(
-                        animation: _pulseAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _pulseAnimation.value,
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: AsteriaTheme.cleanCardDecoration(),
-                              padding: const EdgeInsets.all(
-                                AsteriaTheme.spacingLarge,
-                              ),
-                              child: SvgPicture.asset(
-                                'assets/Logos/Asteri.svg',
-                                colorFilter: const ColorFilter.mode(
-                                  AsteriaTheme.primaryColor,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+          child: Stack(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_graph == null) ...[
+                    const Spacer(flex: 3),
+                    // Hourglass loader
+                    const HourglassLoader(size: 120),
+                    const SizedBox(height: AsteriaTheme.spacingLarge),
+                    // Main heading
+                    Text(
+                      'Find your constellation.',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: AsteriaTheme.textPrimary,
+                        fontWeight: FontWeight.w400,
                       ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: AsteriaTheme.spacingXXLarge),
-
-                // Main heading
-                Text(
-                  'Find your constellation.',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AsteriaTheme.textPrimary,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: AsteriaTheme.spacingMedium),
-
-                // Subheading
-                Text(
-                  'CONNECT WITH PEOPLE WHO SEE THE WORLD LIKE YOU',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AsteriaTheme.textSecondary,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.2,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: AsteriaTheme.spacingXXLarge),
-
-                // Status message and progress
-                if (!_showSignInButton) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AsteriaTheme.spacingLarge,
-                      vertical: AsteriaTheme.spacingMedium,
+                      textAlign: TextAlign.center,
                     ),
-                    decoration: AsteriaTheme.cleanCardDecoration(),
-                    child: Column(
-                      children: [
-                        Text(
-                          _statusMessage,
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: AsteriaTheme.textPrimary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AsteriaTheme.spacingMedium),
-                        Container(
-                          height: 4,
-                          width: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            color: AsteriaTheme.backgroundTertiary,
+                    const SizedBox(height: AsteriaTheme.spacingMedium),
+                    // Subheading
+                    Text(
+                      'CONNECT WITH PEOPLE WHO SEE THE WORLD LIKE YOU',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AsteriaTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AsteriaTheme.spacingXXLarge),
+                  ] else ...[
+                    const Spacer(flex: 2),
+                  ],
+
+                  // Graph canvas (when available)
+                  if (_graph != null) ...[
+                    Container(
+                      height: 360,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: AsteriaTheme.spacingLarge,
+                      ),
+                      decoration: AsteriaTheme.cleanCardDecoration(),
+                      child: PassionGraph(snapshot: _graph!),
+                    ),
+                    const Spacer(flex: 2),
+                  ],
+
+                  // Status message and progress (only while no graph yet)
+                  if (!_showContinue && _graph == null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AsteriaTheme.spacingLarge,
+                        vertical: AsteriaTheme.spacingMedium,
+                      ),
+                      decoration: AsteriaTheme.cleanCardDecoration(),
+                      child: Column(
+                        children: [
+                          Text(
+                            _statusMessage,
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(color: AsteriaTheme.textPrimary),
+                            textAlign: TextAlign.center,
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _progress,
-                              backgroundColor: Colors.transparent,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                AsteriaTheme.primaryColor,
+                          const SizedBox(height: AsteriaTheme.spacingMedium),
+                          Container(
+                            height: 4,
+                            width: 200,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              color: AsteriaTheme.backgroundTertiary,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: _progress,
+                                backgroundColor: Colors.transparent,
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AsteriaTheme.primaryColor,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+
+                  const Spacer(flex: 3),
+                  const SizedBox(height: 72), // space for bottom overlay
                 ],
+              ),
 
-                // Google Sign-In Button
-                if (_showSignInButton) ...[
-                  AnimatedBuilder(
-                    animation: _fadeAnimation,
-                    builder: (context, child) {
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Container(
-                          width: 280,
-                          height: 50,
-                          decoration: AsteriaTheme.pillDecoration(
-                            backgroundColor: AsteriaTheme.secondaryColor,
+              // Bottom overlay for completion message and continue button
+              if (_showContinue)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+                    child: Container(
+                      decoration: AsteriaTheme.cleanCardDecoration(),
+                      padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Screenshot this and click Continue',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(color: AsteriaTheme.textPrimary),
+                            textAlign: TextAlign.center,
                           ),
-                          child: ElevatedButton(
-                            onPressed: _navigateToCommunity,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AsteriaTheme.radiusXLarge,
-                                ),
-                                side: const BorderSide(
-                                  color: Color(0xFFE0E0E0),
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Google Logo
-                                Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
-                                    image: DecorationImage(
-                                      image: NetworkImage(
-                                        'https://developers.google.com/identity/images/g-logo.png',
-                                      ),
-                                      fit: BoxFit.contain,
-                                    ),
+                          const SizedBox(height: AsteriaTheme.spacingLarge),
+                          SizedBox(
+                            width: 220,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _navigateToCommunity,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AsteriaTheme.secondaryColor,
+                                foregroundColor: AsteriaTheme.accentColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AsteriaTheme.radiusXLarge,
                                   ),
                                 ),
-                                const SizedBox(
-                                  width: AsteriaTheme.spacingMedium,
-                                ),
-                                Text(
-                                  'Sign in with Google',
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        color: AsteriaTheme.accentColor,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                ),
-                              ],
+                              ),
+                              child: const Text('Continue'),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                    ),
                   ),
-                ],
-
-                const Spacer(flex: 3),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
