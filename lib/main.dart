@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'background.dart';
 import 'pages/auth_gate.dart';
 import 'utils/constants.dart';
 import 'theme.dart';
+import 'services/push_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +13,8 @@ Future<void> main() async {
     url: AppConstants.kSupabaseUrl,
     anonKey: AppConstants.kSupabaseAnonKey,
   );
+  // Best-effort push init (non-blocking)
+  unawaited(PushService.instance.initialize());
   runApp(const MainApp());
 }
 

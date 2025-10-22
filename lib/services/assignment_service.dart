@@ -8,8 +8,11 @@ class AssignmentService {
   final StreamController<String> _assignmentStreamController =
       StreamController<String>.broadcast();
   RealtimeChannel? _channel;
+  RealtimeChannel? _dbChannel;
   final Map<int, String> _roundToLabel = <int, String>{};
   int _currentRound = 1;
+  Timer? _pollTimer;
+  String? _lastPushedLabel;
 
   Future<String> fetchCurrentTableLabel() async {
     final res = await Supabase.instance.client.functions.invoke(
@@ -43,6 +46,7 @@ class AssignmentService {
     final current = _roundToLabel[_currentRound];
     if (current is String) {
       _assignmentStreamController.add(current);
+      _lastPushedLabel = current;
     }
   }
 
@@ -57,18 +61,56 @@ class AssignmentService {
             final next = _roundToLabel[_currentRound];
             if (next is String && next.isNotEmpty) {
               _assignmentStreamController.add(next);
+              _lastPushedLabel = next;
             }
           }
         } catch (_) {}
       },
     );
     _channel!.subscribe();
+
+    // Also listen to Postgres changes on public.current_round as a reliable fallback
+    _dbChannel ??= Supabase.instance.client.channel(
+      'realtime:public:current_round',
+    );
+    _dbChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'current_round',
+      callback: (payload) {
+        try {
+          final newRecord = payload.newRecord as Map<String, dynamic>?;
+          final r = newRecord != null ? newRecord['round'] : null;
+          if (r is int) {
+            _currentRound = r;
+            final next = _roundToLabel[_currentRound];
+            if (next is String && next.isNotEmpty) {
+              _assignmentStreamController.add(next);
+            }
+          }
+        } catch (_) {}
+      },
+    );
+    _dbChannel!.subscribe();
+
+    // Fallback: poll the server for current assignment every 5s
+    _pollTimer ??= Timer.periodic(const Duration(seconds: 5), (_) async {
+      try {
+        final latest = await fetchCurrentTableLabel();
+        if (latest.isNotEmpty && latest != _lastPushedLabel) {
+          _assignmentStreamController.add(latest);
+          _lastPushedLabel = latest;
+        }
+      } catch (_) {}
+    });
     return _assignmentStreamController.stream;
   }
 
   Future<void> dispose() async {
     await _channel?.unsubscribe();
+    await _dbChannel?.unsubscribe();
     await _assignmentStreamController.close();
+    _pollTimer?.cancel();
   }
 
   Future<void> adminSwitch({

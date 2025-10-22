@@ -142,3 +142,33 @@ create policy "read own schedule" on public.user_rounds
 create index if not exists idx_user_rounds_user_id on public.user_rounds(user_id);
 create index if not exists idx_user_rounds_round on public.user_rounds(round);
 
+-- ================================
+-- Push notifications (device tokens)
+-- ================================
+
+create table if not exists public.user_push_tokens (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token text not null,
+  platform text check (platform in ('ios','android','web')),
+  last_seen_at timestamptz not null default now(),
+  primary key (token)
+);
+
+alter table public.user_push_tokens enable row level security;
+
+-- Policies: users can manage their own tokens
+drop policy if exists "upsert own token" on public.user_push_tokens;
+create policy "upsert own token" on public.user_push_tokens
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "read own tokens" on public.user_push_tokens;
+create policy "read own tokens" on public.user_push_tokens
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "delete own token" on public.user_push_tokens;
+create policy "delete own token" on public.user_push_tokens
+  for delete using (auth.uid() = user_id);
+
+-- Indexes
+create index if not exists idx_user_push_tokens_user_id on public.user_push_tokens(user_id);
+
