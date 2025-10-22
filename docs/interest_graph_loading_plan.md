@@ -154,3 +154,37 @@ This document describes how the new loading experience will analyze a user’s Y
    - Tests
      - Unit: telemetry envelopes redact identifiers; sampling rate respected.
 
+---
+
+### Embedding-driven Cohorts for Table Assignment (Addendum)
+
+Goal: Reuse embeddings generated during loading to pre-group users into three interest-aware cohorts that align with event tables X/Y/Z.
+
+- Inputs
+  - User vectors from `embedUserYouTubeProfile(...)` and `assignClusterForUser()` results (`cluster_id`, similarity).
+  - Stored in Supabase (pgvector enabled).
+
+- Cohorting strategies
+  - v1: Simple partition
+    - Assign users into A/B/C via `cluster_id % 3` or by nearest among three chosen centroids.
+    - Balance cohort sizes by round-robin spillover if one grows too large.
+  - v1.1: KMeans K=3 (pgvector)
+    - Compute centroids offline/pre-event; map users to nearest centroid; enforce balancing tolerance (e.g., ±1 user).
+
+- Persistence (optional but recommended)
+  - `segments` (A,B,C) and `user_segments` mappings for admin targeting.
+  - Optional `assignment_segment` for storing current table per cohort if needed later.
+
+- Rotation schedule (three rounds)
+  - Round 1: A→X, B→Y, C→Z
+  - Round 2: A→Y, B→Z, C→X
+  - Round 3: A→Z, B→X, C→Y
+
+- Integration with main plan
+  - Admin UI audience dropdown supports `segment` already.
+  - Realtime and push remain unchanged; only audience targeting varies.
+
+- Tests
+  - Dry-run on sample dataset; inspect cohort balance and topical coherence.
+  - Manual: follow the 6-user rotation acceptance test in `docs/plan-table-switching.md` (two users per cohort).
+

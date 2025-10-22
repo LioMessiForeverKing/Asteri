@@ -227,3 +227,286 @@ Required env/config
 - Security model (admin role with Supabase) is documented and feasible.
 - Push provider choice (FCM) and required env vars are enumerated.
 - Rollback: if push is disabled, realtime updates still work via Supabase Realtime events.
+
+---
+
+### Embedding-driven Assignments (Cohorts)
+
+Use existing user embeddings and cluster assignments to create interest-aware cohorts that map to tables. This augments the admin flow without changing client contracts.
+
+- Source data
+  - Reuse vectors and `cluster_id` generated during `LoadingPage` via `embedUserYouTubeProfile(...)` and `assignClusterForUser()`; stored in Supabase.
+  - Optional: compute centroids and similarities with pgvector for higher quality grouping.
+
+- v1 cohorting (simple and reliable)
+  - Cohorts A/B/C = stable partition of users into three groups using one of:
+    - `cluster_id % 3`, or
+    - nearest of 3 preselected centroids (k-means K=3), then balance counts.
+  - Persist (optional, for admin targeting and audit):
+    - `segments` (id: 'A'|'B'|'C', name, criteria jsonb)
+    - `user_segments` (user_id, segment_id)
+  - Admin selects audience `segment` ('A','B','C') to switch tables per cohort.
+
+- Rotation schedule (3 rounds)
+  - Round 1: A→X, B→Y, C→Z
+  - Round 2: A→Y, B→Z, C→X
+  - Round 3: A→Z, B→X, C→Y
+  - Implement as a precomputed map in the admin UI or a helper in the switch function.
+
+- APIs & contracts
+  - Unchanged. `POST /api/admin/assignment/switch` already supports `audience: segment`.
+
+- Migration (optional to enable segments)
+  - Add `segments`, `user_segments`, optionally `assignment_segment` if we later store per-segment current table.
+  - Pre-event script/function to populate cohorts from embeddings and ensure near-equal sizes.
+
+- Testing
+  - Dry-run cohorting on sample users; verify near-equal split and interest coherence.
+  - Run the “Final Manual Test: 6-User Rotation” with two users per cohort to validate rotation and realtime behavior.
+
+### Strict Execution Checklist for Cursor (follow in order, no steps skipped)
+
+Read carefully. Perform each step exactly as written, commit between phases, and run listed tests before advancing. Do not auto-refactor unrelated code. Keep auth and loading UX unchanged.
+
+#### Phase 0 — Skeleton navigation and pages (no backend calls)
+
+1) Add pages and services (skeletons only)
+   - Create `lib/pages/assignment_page.dart` with a static UI that renders: "Go to Table X" and a small placeholder history. No network.
+   - Create `lib/pages/admin_switch_page.dart` with disabled [X][Y][Z] buttons, audience dropdown (all), message input, and a disabled "Send & Notify".
+   - Create `lib/services/assignment_service.dart` with stubbed methods that return static data and a `Stream` controller for fake events.
+   - Create `lib/services/push_service.dart` with no-op methods (`requestPermission`, `registerToken`).
+
+2) Update routing (only target screen changes)
+   - Edit `lib/pages/auth_gate.dart`: replace `CommunityPage` with `AssignmentPage` in the final branch.
+   - Edit `lib/pages/loading_page.dart`: change `_navigateToCommunity()` to navigate to `AssignmentPage` (rename helper accordingly).
+   - Do not delete `CommunityPage`/`ServerPage` yet; just remove them from primary navigation.
+
+3) Build & manual sanity test
+   - Run the app; sign in → ensure `LoadingPage` still works; on continue, the `AssignmentPage` appears with static text.
+
+Definition of Done (Phase 0)
+- App flow: Login → Loading → Assignment (static). No crashes. No regressions to login/loading.
+
+Tests to run (Phase 0)
+```bash
+flutter analyze
+flutter test  # should pass (even if no tests yet)
+```
+
+---
+
+#### Phase 1 — API contracts + realtime (in-memory/stub backend)
+
+1) Edge Functions (stubs)
+   - Create directories:
+     - `supabase/functions/assignment-current/index.ts`
+     - `supabase/functions/assignment-switch/index.ts`
+   - Implement in-memory variable `current_table` initialized to 'X'.
+   - `GET assignment-current`: return `{ table_label: current_table, updated_at: now, scope: 'global' }`.
+   - `POST assignment-switch` (admin-only): validate input, update `current_table`, publish realtime event `assignment.changed` with `{ table_label, ts }`, return success. For now, skip DB and push.
+
+2) Realtime channel
+   - Use a broadcast channel named `assignment`.
+   - Publisher: `assignment-switch` after updating `current_table`.
+
+3) Client service wiring
+   - In `lib/services/assignment_service.dart`, implement real `fetchCurrent()` calling the function URL and `subscribeAssignment()` using Supabase Realtime.
+   - In `lib/pages/assignment_page.dart`, replace stub with real fetch+subscribe and small history (max 2).
+
+4) Admin UI enablement
+   - In `lib/pages/admin_switch_page.dart`, enable the buttons to call `AssignmentService.adminSwitch(...)`. UI remains available, but server still enforces admin.
+
+Definition of Done (Phase 1)
+- Admin switch changes the label on all connected clients within ~1s via realtime. No DB writes yet. Push is not involved.
+
+Tests to run (Phase 1)
+```bash
+# Start functions locally (supabase CLI) and app
+# In a separate shell, call APIs:
+curl -sS http://localhost:54321/functions/v1/assignment-current | jq
+curl -sS -X POST http://localhost:54321/functions/v1/assignment-switch \
+  -H 'Content-Type: application/json' \
+  -d '{"table_label":"Y","audience":"all"}' | jq
+# Verify clients update to Y in realtime
+```
+
+---
+
+#### Phase 2 — Push token registration + test send
+
+1) Client push setup abstraction
+   - Expand `lib/services/push_service.dart` to request permission, obtain a token (platform-specific), and call `POST /api/push/register`.
+   - On `AssignmentPage` mount (or after successful login), prompt for notifications; if granted, register token via the endpoint.
+
+2) Edge Functions for push
+   - Add `supabase/functions/push-register/index.ts` to save `{ user_id, platform, token, web? }` into `push_tokens`.
+   - Add `supabase/functions/push-test/index.ts` (admin-only) to send a test push to a chosen token/user; log result (stdout for now).
+
+3) Minimal provider integration (keep real-send optional until Phase 3)
+   - Wire the client to register tokens successfully.
+   - `push-test` can be a no-op send at this phase or return a simulated success to validate the flow.
+
+Definition of Done (Phase 2)
+- Client can obtain permission and register a token server-side. Admin can invoke `push-test` and get a successful response path.
+
+Tests to run (Phase 2)
+```bash
+# Register (from device logs confirm request). Also directly:
+curl -sS -X POST http://localhost:54321/functions/v1/push-register \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <user_jwt>' \
+  -d '{"platform":"web","token":"demo-token"}' | jq
+
+# Admin-only test send (expect ok)
+curl -sS -X POST http://localhost:54321/functions/v1/push-test \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <admin_jwt>' \
+  -d '{"token":"demo-token","message":"Hello"}' | jq
+```
+
+---
+
+#### Phase 3 — Persistence + push delivery (production wiring)
+
+1) Database: add tables and policies (update `supabase/schema.sql`)
+   - Create `assignment_global`, `push_tokens`, `broadcasts` with indices and RLS as defined above.
+   - Seed `assignment_global` with id=1 and a default `current_table`.
+
+2) Edge Functions: move from memory to DB
+   - `assignment-current`: read from `assignment_global`.
+   - `assignment-switch`: write to `assignment_global`, insert into `broadcasts`, publish realtime, trigger FCM push, then update `broadcasts.status`.
+
+3) Push provider (FCM)
+   - Load secrets from env; send notifications with payload containing `{ table_label, message? }`.
+   - Mobile/web: ensure tapping the notification opens the app to `AssignmentPage`.
+
+4) Client polish
+   - Finalize `AssignmentPage` UI states (loading, offline, history, haptic).
+   - Admin page: display last 5 broadcasts or at least last `updated_at` and target label.
+
+Definition of Done (Phase 3)
+- Admin switch persists to DB, fires realtime, and (if configured) sends FCM. Clients update instantly; optional push is received on at least one platform.
+
+Tests to run (Phase 3)
+```bash
+# DB verification
+psql $SUPABASE_DB_URL -c "select current_table, updated_at from assignment_global;"
+
+# API behavior
+curl -sS http://localhost:54321/functions/v1/assignment-current | jq
+curl -sS -X POST http://localhost:54321/functions/v1/assignment-switch \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <admin_jwt>' \
+  -d '{"table_label":"Z","audience":"all","message":"Go to Z"}' | jq
+
+# Push delivery (observe device/browser)
+```
+
+---
+
+#### Phase 4 — Security, rate limits, docs, and sign-off
+
+1) Enforce admin role server-side on `assignment-switch` and `push-test`. Add simple per-user rate limits.
+2) Validate Origin/Referer for admin POSTs when used from web.
+3) Add README setup steps (env keys, platform configs).
+4) Final acceptance review against criteria.
+
+Definition of Done (Phase 4)
+- All criteria in section 14 satisfied. Rollback tested: disabling push still leaves realtime working.
+
+Tests to run (Phase 4)
+```bash
+# Negative tests (must fail):
+# 1) Non-admin calling assignment-switch
+curl -sS -X POST http://localhost:54321/functions/v1/assignment-switch \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <non_admin_jwt>' \
+  -d '{"table_label":"X","audience":"all"}' | jq
+# Expect 403
+
+# 2) Invalid payload
+curl -sS -X POST http://localhost:54321/functions/v1/assignment-switch \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <admin_jwt>' \
+  -d '{"table_label":"Q"}' | jq
+# Expect 400
+```
+
+---
+
+### CI/Local test matrix (run before merging each phase)
+
+- Lint/static analysis
+  - `flutter analyze`
+  - Consider `dart format --set-exit-if-changed .` in CI.
+
+- Unit tests (add progressively)
+  - Assignment service parses API response correctly.
+  - Admin service blocks without admin token (mock).
+
+- Integration checks
+  - Realtime event causes UI update < 1s (log timestamps in client).
+  - Push register endpoint stores token; test endpoint returns success.
+
+- Manual E2E
+  - Admin sets Y → all clients show “Go to Table Y” and receive push if enabled.
+
+---
+
+### Rollback Procedure
+
+- Disable push sending by toggling an env flag in functions; keep realtime enabled.
+- If functions fail, clients still render the last fetched assignment. Admin page should display error status for broadcasts.
+
+---
+
+### Instruction to Cursor
+
+Cursor, follow these steps in very strict manner:
+- Execute phases strictly in order: Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4.
+- After each numbered step, run the listed tests and stop if any fail.
+- Do not refactor unrelated code.
+- Do not change `SignInPage`, `LoadingPage` visuals, or the timer.
+- Keep commits small and labeled by phase and step.
+- If a step requires credentials or external config, annotate the file and pause for keys rather than hardcoding.
+
+---
+
+### Final Manual Test: 6-User Rotation (Acceptance Exercise)
+
+This test is intentionally manual to mimic the real event experience with multiple concurrent clients.
+
+Prerequisites
+- 6 distinct signed-in sessions (any mix of iOS, Android, and Web). For Web, use separate browsers or profiles/Incognito so each holds its own session and push permission.
+- Admin account with access to `/admin/switch`.
+- Push configured on at least one platform (others may rely on realtime only).
+
+Procedure
+1) Prepare clients
+   - Open the app on 6 devices/sessions and sign in with Google.
+   - Ensure each client is on `AssignmentPage` and shows the same current label (e.g., X).
+2) Round 1: Switch to X
+   - From `/admin/switch`, choose `X`, audience `all`, message "Go to Table X" and Send.
+   - Verify on all 6 clients:
+     - The label updates to “Go to Table X” within ~1s (realtime).
+     - Push notification arrives on devices with push enabled.
+3) Round 2: Switch to Y
+   - Send `Y` to `all` with an optional message.
+   - Verify all 6 clients update to Y and the history shows the previous table.
+4) Round 3: Switch to Z
+   - Send `Z` to `all`.
+   - Verify all 6 clients update to Z and the history lists last two (X, then Y) in the correct order.
+5) Timing metrics
+   - For each round, record `published_at` (admin response) and the first on-screen update time on a representative client. Target average time-to-switch ≤ 1 second.
+6) Offline case (resilience)
+   - Put one client offline before a switch; perform a switch; bring it back online and confirm it reconciles to the latest label via initial GET or realtime catch-up.
+7) Delivery outcomes
+   - Check `broadcasts` for status and errors (if any). Confirm push success count aligns with the number of devices with push enabled.
+
+Pass Criteria
+- All 6 clients reflect X → Y → Z correctly, with history showing the last two assignments.
+- Average time-to-switch ≤ 1s across rounds (realtime).
+- Push notifications delivered on at least one configured platform; absence of push does not block realtime correctness.
+- Offline client reconciles to the latest assignment when it reconnects.
+
+Note: This is a manual test by design. Do not automate; run it at the end of Phase 3 before sign-off in Phase 4.

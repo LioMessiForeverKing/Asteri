@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'loading_page.dart';
 import 'sign_in_page.dart';
-import 'community_page.dart';
+import 'assignment_page.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   Future<bool> _checkIfUserNeedsLoading(String userId) async {
     try {
-      // Check if user has any subscriptions in the database
+      // Check if user has a successful sync recorded
       final response = await Supabase.instance.client
-          .from('youtube_subscriptions')
-          .select('id')
+          .from('user_sync_status')
+          .select('last_successful_sync')
           .eq('user_id', userId)
-          .limit(1);
+          .maybeSingle();
 
-      // If no subscriptions found, user needs to go through loading
-      return response.isEmpty;
+      // If we have a last_successful_sync, skip loading
+      return (response == null || response['last_successful_sync'] == null);
     } catch (e) {
-      // On error, assume loading is needed
-      return true;
+      // On error, default to skip loading to avoid re-running heavy pipeline
+      return false;
     }
   }
 
@@ -59,8 +59,8 @@ class AuthGate extends StatelessWidget {
               // User needs initial setup -> Show loading page
               return const LoadingPage();
             } else {
-              // User already set up -> Go to communities for now (keep TimerPage for later)
-              return const CommunityPage();
+              // User already set up -> Go to AssignmentPage
+              return const AssignmentPage();
             }
           },
         );

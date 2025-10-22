@@ -102,3 +102,43 @@ create index if not exists idx_youtube_subscriptions_user_id on public.youtube_s
 create index if not exists idx_youtube_liked_videos_user_id on public.youtube_liked_videos(user_id);
 create index if not exists idx_user_embeddings_user_id on public.user_embeddings(user_id);
 
+-- ================================
+-- Assignment scheduling (Phase 3)
+-- ================================
+
+-- Stores the active round number for the event (1,2,3). Single row id=1.
+create table if not exists public.current_round (
+  id integer primary key default 1,
+  round smallint not null default 1 check (round in (1,2,3)),
+  updated_at timestamptz not null default now()
+);
+
+-- Each user's assigned table per round.
+create table if not exists public.user_rounds (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  round smallint not null check (round in (1,2,3)),
+  table_label text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, round)
+);
+
+-- RLS
+alter table public.current_round enable row level security;
+alter table public.user_rounds enable row level security;
+
+-- Anyone can read the current round (client needs to know which to show)
+drop policy if exists "read current round" on public.current_round;
+create policy "read current round" on public.current_round
+  for select using (true);
+
+-- Users can read only their own schedules
+drop policy if exists "read own schedule" on public.user_rounds;
+create policy "read own schedule" on public.user_rounds
+  for select using (auth.uid() = user_id);
+
+-- Note: Inserts/updates are performed by service role Edge Functions and bypass RLS.
+
+-- Indexes
+create index if not exists idx_user_rounds_user_id on public.user_rounds(user_id);
+create index if not exists idx_user_rounds_round on public.user_rounds(round);
+

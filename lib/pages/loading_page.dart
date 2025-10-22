@@ -8,7 +8,8 @@ import '../widgets/passion_graph.dart';
 import '../widgets/hourglass_loader.dart';
 import 'dart:math' as math;
 import '../theme.dart';
-import 'community_page.dart';
+import 'assignment_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoadingPage extends StatefulWidget {
   const LoadingPage({super.key});
@@ -165,6 +166,19 @@ class _LoadingPageState extends State<LoadingPage>
       await Future.delayed(const Duration(milliseconds: 1000));
       if (!mounted) return;
 
+      // Mark user as successfully set up
+      try {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          await Supabase.instance.client.from('user_sync_status').upsert({
+            'user_id': userId,
+            'last_successful_sync': DateTime.now().toIso8601String(),
+          });
+        }
+      } catch (_) {
+        // Non-fatal: continue navigation
+      }
+
       setState(() {
         _showContinue = true;
       });
@@ -179,11 +193,11 @@ class _LoadingPageState extends State<LoadingPage>
     }
   }
 
-  void _navigateToCommunity() {
+  void _navigateToAssignment() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const CommunityPage(),
+            const AssignmentPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -315,7 +329,7 @@ class _LoadingPageState extends State<LoadingPage>
                             width: 220,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _navigateToCommunity,
+                              onPressed: _navigateToAssignment,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AsteriaTheme.secondaryColor,
                                 foregroundColor: AsteriaTheme.accentColor,
