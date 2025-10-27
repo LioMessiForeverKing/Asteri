@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import '../services/youtube_service.dart';
 import '../services/openai_service.dart';
 import '../models/passion_graph.dart';
-import '../widgets/passion_graph.dart';
-import '../widgets/hourglass_loader.dart';
+import '../widgets/asteria_loading_animation.dart';
 import 'dart:math' as math;
 import '../theme.dart';
-import 'assignment_page.dart';
+import 'star_map_page.dart';
+import 'passion_graph_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoadingPage extends StatefulWidget {
@@ -23,7 +23,6 @@ class _LoadingPageState extends State<LoadingPage>
   late AnimationController _fadeController;
 
   String _statusMessage = 'Initializing...';
-  double _progress = 0.0;
   bool _showContinue = false;
   GraphSnapshot? _graph;
 
@@ -66,7 +65,6 @@ class _LoadingPageState extends State<LoadingPage>
       // Step 1: Sync subscriptions
       setState(() {
         _statusMessage = 'Mapping your digital footprint...';
-        _progress = 0.1;
       });
 
       await YouTubeService.syncSubscriptionsToSupabase(
@@ -79,7 +77,6 @@ class _LoadingPageState extends State<LoadingPage>
       // Step 2: Sync liked videos
       setState(() {
         _statusMessage = 'Analyzing your social graph...';
-        _progress = 0.3;
       });
 
       await YouTubeService.syncLikedVideosToSupabase(
@@ -92,7 +89,6 @@ class _LoadingPageState extends State<LoadingPage>
       // Step 3: Create embeddings
       setState(() {
         _statusMessage = 'Discovering your connection patterns...';
-        _progress = 0.5;
       });
 
       await YouTubeService.embedUserYouTubeProfile(full: true);
@@ -102,7 +98,6 @@ class _LoadingPageState extends State<LoadingPage>
       // Step 4: Assign cluster
       setState(() {
         _statusMessage = 'Finding your tribe...';
-        _progress = 0.7;
       });
 
       Map<String, dynamic> assign = await YouTubeService.assignClusterForUser();
@@ -120,7 +115,6 @@ class _LoadingPageState extends State<LoadingPage>
       // Step 5: Summarize passions via OpenAI and prepare graph
       setState(() {
         _statusMessage = 'Composing your knowledge map...';
-        _progress = 0.85;
       });
 
       final subs = await YouTubeService.fetchAllSubscriptions(pageSize: 50);
@@ -128,10 +122,13 @@ class _LoadingPageState extends State<LoadingPage>
         pageSize: 50,
         maxItems: 100,
       );
-      final snapshot = await OpenAIService.summarizePassions(
+      GraphSnapshot snapshot = await OpenAIService.summarizePassions(
         subscriptions: subs,
         likedVideos: likes,
       );
+
+      // Deduplicate nodes/edges before layout
+      snapshot = _dedupeGraph(snapshot);
 
       // Seed initial circular layout
       final int n = snapshot.nodes.length;
@@ -144,26 +141,14 @@ class _LoadingPageState extends State<LoadingPage>
       setState(() {
         _graph = snapshot;
         _statusMessage = 'Almost ready...';
-        _progress = 0.95;
       });
 
       // Step 6: Complete
       setState(() {
-        _statusMessage = 'Almost ready...';
-        _progress = 0.9;
-      });
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-
-      setState(() {
         _statusMessage = 'All set!';
-        _progress = 1.0;
       });
 
-      // Show instruction then Continue after delay
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
 
       // Mark user as successfully set up
@@ -179,25 +164,33 @@ class _LoadingPageState extends State<LoadingPage>
         // Non-fatal: continue navigation
       }
 
-      setState(() {
-        _showContinue = true;
-      });
+      // Immediately navigate to PassionGraphPage and clear the loading page
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              PassionGraphPage(snapshot: _graph!),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: AsteriaTheme.animationMedium,
+        ),
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _statusMessage = 'Error: ${e.toString()}';
-        _progress = 1.0;
         _showContinue = true;
       });
     }
   }
 
-  void _navigateToAssignment() {
+  void _navigateToStarMap() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const AssignmentPage(),
+            const StarMapPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -206,144 +199,104 @@ class _LoadingPageState extends State<LoadingPage>
     );
   }
 
+  GraphSnapshot _dedupeGraph(GraphSnapshot snapshot) {
+    final Map<String, PassionNode> byLabel = <String, PassionNode>{};
+    for (final node in snapshot.nodes) {
+      final String key = node.label.trim().toLowerCase();
+      final PassionNode? existing = byLabel[key];
+      if (existing == null || node.weight > existing.weight) {
+        byLabel[key] = node;
+      }
+    }
+    final List<PassionNode> nodes = byLabel.values.toList();
+    final Set<String> validIds = nodes.map((n) => n.id).toSet();
+    final List<GraphEdge> edges = snapshot.edges
+        .where(
+          (e) =>
+              validIds.contains(e.sourceId) &&
+              validIds.contains(e.targetId) &&
+              e.sourceId != e.targetId,
+        )
+        .toList();
+    return GraphSnapshot(nodes: nodes, edges: edges);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AsteriaTheme.backgroundPrimary,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Stack(
+          child: Column(
             children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_graph == null) ...[
-                    const Spacer(flex: 3),
-                    // Hourglass loader
-                    const HourglassLoader(size: 120),
-                    const SizedBox(height: AsteriaTheme.spacingLarge),
-                    // Main heading
-                    Text(
-                      'Find your constellation.',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              // Top section with animated logo and main text
+              Expanded(
+                flex: 2,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Asteria animated logo
+                      AsteriaLoadingAnimation(
+                        size: 96,
                         color: AsteriaTheme.textPrimary,
-                        fontWeight: FontWeight.w400,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AsteriaTheme.spacingMedium),
-                    // Subheading
-                    Text(
-                      'CONNECT WITH PEOPLE WHO SEE THE WORLD LIKE YOU',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AsteriaTheme.textSecondary,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1.2,
+                      const SizedBox(height: AsteriaTheme.spacingLarge),
+                      // Dynamic status text
+                      Text(
+                        _statusMessage,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AsteriaTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AsteriaTheme.spacingXXLarge),
-                  ] else ...[
-                    const Spacer(flex: 2),
-                  ],
-
-                  // Graph canvas (when available)
-                  if (_graph != null) ...[
-                    Container(
-                      height: 360,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: AsteriaTheme.spacingLarge,
-                      ),
-                      decoration: AsteriaTheme.cleanCardDecoration(),
-                      child: PassionGraph(snapshot: _graph!),
-                    ),
-                    const Spacer(flex: 2),
-                  ],
-
-                  // Status message and progress (only while no graph yet)
-                  if (!_showContinue && _graph == null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AsteriaTheme.spacingLarge,
-                        vertical: AsteriaTheme.spacingMedium,
-                      ),
-                      decoration: AsteriaTheme.cleanCardDecoration(),
-                      child: Column(
-                        children: [
-                          Text(
-                            _statusMessage,
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: AsteriaTheme.textPrimary),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: AsteriaTheme.spacingMedium),
-                          Container(
-                            height: 4,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              color: AsteriaTheme.backgroundTertiary,
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: _progress,
-                                backgroundColor: Colors.transparent,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AsteriaTheme.primaryColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const Spacer(flex: 3),
-                  const SizedBox(height: 72), // space for bottom overlay
-                ],
+                    ],
+                  ),
+                ),
               ),
+
+              // Minimal bottom spacer to keep vertical balance
+              const SizedBox(height: AsteriaTheme.spacingXXLarge),
+
+              // No in-page graph preview; navigate to a dedicated page when ready
 
               // Bottom overlay for completion message and continue button
               if (_showContinue)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
+                Container(
+                  padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+                  child: Container(
+                    decoration: AsteriaTheme.cleanCardDecoration(),
                     padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                    child: Container(
-                      decoration: AsteriaTheme.cleanCardDecoration(),
-                      padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Screenshot this and click Continue',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: AsteriaTheme.textPrimary),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: AsteriaTheme.spacingLarge),
-                          SizedBox(
-                            width: 220,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _navigateToAssignment,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AsteriaTheme.secondaryColor,
-                                foregroundColor: AsteriaTheme.accentColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AsteriaTheme.radiusXLarge,
-                                  ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Screenshot this and click Continue',
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: AsteriaTheme.textPrimary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AsteriaTheme.spacingLarge),
+                        SizedBox(
+                          width: 220,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _navigateToStarMap,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AsteriaTheme.secondaryColor,
+                              foregroundColor: AsteriaTheme.accentColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AsteriaTheme.radiusXLarge,
                                 ),
                               ),
-                              child: const Text('Continue'),
                             ),
+                            child: const Text('Continue'),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

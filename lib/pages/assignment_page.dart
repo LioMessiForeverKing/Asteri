@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/assignment_service.dart';
 import '../theme.dart';
+import 'star_map_page.dart';
 
 class AssignmentPage extends StatefulWidget {
   const AssignmentPage({super.key});
@@ -66,6 +67,44 @@ class _AssignmentPageState extends State<AssignmentPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Redundant notice
+              Container(
+                padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+                margin: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+                decoration: AsteriaTheme.cleanCardDecoration(
+                  backgroundColor: AsteriaTheme.warningColor.withValues(
+                    alpha: 0.1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: AsteriaTheme.warningColor,
+                      size: 32,
+                    ),
+                    const SizedBox(height: AsteriaTheme.spacingMedium),
+                    Text(
+                      'This page is now redundant',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AsteriaTheme.warningColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AsteriaTheme.spacingSmall),
+                    Text(
+                      'The new Star Map interface has replaced table assignments.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AsteriaTheme.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Original content (for reference)
               Text(
                 'Go to Table $_current',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -82,6 +121,29 @@ class _AssignmentPageState extends State<AssignmentPage> {
                     color: AsteriaTheme.textSecondary,
                   ),
                 ),
+
+              const SizedBox(height: AsteriaTheme.spacingXLarge),
+
+              // Navigation to Star Map
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const StarMapPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.star_rounded),
+                label: const Text('Go to Star Map'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AsteriaTheme.primaryColor,
+                  foregroundColor: AsteriaTheme.textOnPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AsteriaTheme.spacingXLarge,
+                    vertical: AsteriaTheme.spacingMedium,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
