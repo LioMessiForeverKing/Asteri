@@ -10,7 +10,7 @@ class Background extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: child,
     );
   }

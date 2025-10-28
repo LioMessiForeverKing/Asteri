@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'loading_page.dart';
 import 'sign_in_page.dart';
-import 'star_map_page.dart';
+import 'root_nav_page.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -59,8 +59,8 @@ class AuthGate extends StatelessWidget {
               // User needs initial setup -> Show loading page
               return const LoadingPage();
             } else {
-              // User already set up -> Go to Star Map
-              return const StarMapPage();
+              // User already set up -> Go to Root Nav (Home/Messages/Profile)
+              return const RootNavPage();
             }
           },
         );

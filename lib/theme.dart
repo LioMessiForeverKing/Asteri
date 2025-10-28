@@ -594,6 +594,71 @@ class AsteriaTheme {
     );
   }
 
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme(
+        brightness: Brightness.dark,
+        primary: primaryLight,
+        onPrimary: Colors.white,
+        primaryContainer: primaryDark,
+        onPrimaryContainer: Colors.white,
+        secondary: Colors.white,
+        onSecondary: Colors.black,
+        secondaryContainer: Color(0xFF2A2A2A),
+        onSecondaryContainer: Colors.white,
+        tertiary: Color(0xFF121212),
+        onTertiary: Colors.white,
+        tertiaryContainer: Color(0xFF1E1E1E),
+        onTertiaryContainer: Colors.white,
+        error: errorColor,
+        onError: Colors.white,
+        errorContainer: Color(0xFF8A1C1C),
+        onErrorContainer: Colors.white,
+        surface: Color(0xFF0F0F0F),
+        onSurface: Colors.white,
+        surfaceContainerHighest: Color(0xFF1A1A1A),
+        onSurfaceVariant: Color(0xFFBBBBBB),
+        outline: Color(0xFF3A3A3A),
+        outlineVariant: Color(0xFF2A2A2A),
+        shadow: shadowDark,
+        scrim: Color(0x90000000),
+        inverseSurface: Colors.white,
+        onInverseSurface: Colors.black,
+        inversePrimary: primaryLight,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+      textTheme: const TextTheme(
+        displayLarge: displayLarge,
+        displayMedium: displayMedium,
+        displaySmall: displaySmall,
+        headlineLarge: headlineLarge,
+        headlineMedium: headlineMedium,
+        headlineSmall: headlineSmall,
+        titleLarge: titleLarge,
+        titleMedium: titleMedium,
+        titleSmall: titleSmall,
+        bodyLarge: bodyLarge,
+        bodyMedium: bodyMedium,
+        bodySmall: bodySmall,
+        labelLarge: labelLarge,
+        labelMedium: labelMedium,
+        labelSmall: labelSmall,
+      ),
+      cardTheme: CardThemeData(
+        elevation: elevationLow,
+        color: const Color(0xFF1A1A1A),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: shadowDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+        ),
+        margin: const EdgeInsets.all(spacingSmall),
+      ),
+    );
+  }
+
   // ==================== CUSTOM DECORATIONS ====================
 
   /// Clean card decoration with subtle shadows

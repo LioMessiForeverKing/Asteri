@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 import '../theme.dart';
 
 class StarMapPage extends StatefulWidget {
@@ -14,8 +16,10 @@ class _StarMapPageState extends State<StarMapPage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _pulseController;
+  late AnimationController _spinController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _spinAnimation;
 
   // Hardcoded stars data
   final List<StarData> _stars = [
@@ -27,6 +31,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: true,
       interests: ['Music', 'Technology', 'Art'],
       similarity: 1.0,
+      avatarUrl: 'https://i.pravatar.cc/150?img=1',
     ),
     StarData(
       id: 'star1',
@@ -36,6 +41,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Music', 'Gaming', 'Photography'],
       similarity: 0.85,
+      avatarUrl: 'https://i.pravatar.cc/150?img=2',
     ),
     StarData(
       id: 'star2',
@@ -45,6 +51,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Technology', 'Science', 'Books'],
       similarity: 0.78,
+      avatarUrl: 'https://i.pravatar.cc/150?img=3',
     ),
     StarData(
       id: 'star3',
@@ -54,6 +61,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Art', 'Design', 'Music'],
       similarity: 0.92,
+      avatarUrl: 'https://i.pravatar.cc/150?img=4',
     ),
     StarData(
       id: 'star4',
@@ -63,6 +71,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Sports', 'Fitness', 'Travel'],
       similarity: 0.45,
+      avatarUrl: 'https://i.pravatar.cc/150?img=5',
     ),
     StarData(
       id: 'star5',
@@ -72,6 +81,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Music', 'Movies', 'Cooking'],
       similarity: 0.67,
+      avatarUrl: 'https://i.pravatar.cc/150?img=6',
     ),
     StarData(
       id: 'star6',
@@ -81,6 +91,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Technology', 'Gaming', 'Music'],
       similarity: 0.73,
+      avatarUrl: 'https://i.pravatar.cc/150?img=7',
     ),
     StarData(
       id: 'star7',
@@ -90,6 +101,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Art', 'Photography', 'Travel'],
       similarity: 0.58,
+      avatarUrl: 'https://i.pravatar.cc/150?img=8',
     ),
     StarData(
       id: 'star8',
@@ -99,6 +111,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Science', 'Books', 'Technology'],
       similarity: 0.69,
+      avatarUrl: 'https://i.pravatar.cc/150?img=9',
     ),
     // Additional stars for scrollable map
     StarData(
@@ -109,6 +122,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Design', 'Art', 'Fashion'],
       similarity: 0.76,
+      avatarUrl: 'https://i.pravatar.cc/150?img=10',
     ),
     StarData(
       id: 'star10',
@@ -118,6 +132,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Science', 'Technology', 'Innovation'],
       similarity: 0.82,
+      avatarUrl: 'https://i.pravatar.cc/150?img=11',
     ),
     StarData(
       id: 'star11',
@@ -127,6 +142,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Music', 'Writing', 'Poetry'],
       similarity: 0.64,
+      avatarUrl: 'https://i.pravatar.cc/150?img=12',
     ),
     StarData(
       id: 'star12',
@@ -136,6 +152,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Business', 'Finance', 'Leadership'],
       similarity: 0.38,
+      avatarUrl: 'https://i.pravatar.cc/150?img=13',
     ),
     StarData(
       id: 'star13',
@@ -145,6 +162,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Nature', 'Hiking', 'Photography'],
       similarity: 0.71,
+      avatarUrl: 'https://i.pravatar.cc/150?img=14',
     ),
     StarData(
       id: 'star14',
@@ -154,6 +172,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Gaming', 'Streaming', 'Entertainment'],
       similarity: 0.55,
+      avatarUrl: 'https://i.pravatar.cc/150?img=15',
     ),
     StarData(
       id: 'star15',
@@ -163,6 +182,7 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Education', 'Teaching', 'Learning'],
       similarity: 0.61,
+      avatarUrl: 'https://i.pravatar.cc/150?img=16',
     ),
     StarData(
       id: 'star16',
@@ -172,16 +192,21 @@ class _StarMapPageState extends State<StarMapPage>
       isCurrentUser: false,
       interests: ['Fashion', 'Beauty', 'Lifestyle'],
       similarity: 0.43,
+      avatarUrl: 'https://i.pravatar.cc/150?img=17',
     ),
   ];
 
   StarData? _selectedStar;
-  bool _showConversationCard = false;
+  // Deprecated: inline profile card is now used for all stars
+  // bool _showConversationCard = false;
+  bool _showProfileCard = false;
+  bool _showFilter = false;
+  double _radiusThreshold = 240.0;
+  double _similarityMin = 0.0;
 
-  // Zoom and pan state
-  double _scale = 1.0;
-  Offset _offset = Offset.zero;
-  Offset? _lastPanPosition;
+  // Zoom and pan state (InteractiveViewer)
+  late TransformationController _transformController;
+  Offset? _doubleTapPosition;
 
   @override
   void initState() {
@@ -206,30 +231,51 @@ class _StarMapPageState extends State<StarMapPage>
 
     _fadeController.forward();
     _pulseController.repeat(reverse: true);
+
+    _transformController = TransformationController();
+
+    _spinController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _spinAnimation = Tween<double>(begin: 0.0, end: -math.pi).animate(
+      CurvedAnimation(parent: _spinController, curve: Curves.easeOutCubic),
+    );
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
     _pulseController.dispose();
+    _spinController.dispose();
+    _transformController.dispose();
     super.dispose();
   }
 
   void _onStarTap(StarData star) {
-    if (star.isCurrentUser) return;
-
     setState(() {
       _selectedStar = star;
-      _showConversationCard = true;
+      _showProfileCard = false;
     });
 
     // Haptic feedback
     HapticFeedback.lightImpact();
+
+    // Trigger quick 180-degree CCW rotation on tapped star, then open target
+    _spinController.forward(from: 0).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _showProfileCard = true; // Use unified inline card for all stars
+      });
+    });
   }
 
-  void _closeConversationCard() {
+  // Legacy close for old conversation card (no longer used)
+  void _closeConversationCard() {}
+
+  void _closeProfileCard() {
     setState(() {
-      _showConversationCard = false;
+      _showProfileCard = false;
       _selectedStar = null;
     });
   }
@@ -237,31 +283,16 @@ class _StarMapPageState extends State<StarMapPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AsteriaTheme.backgroundPrimary,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AsteriaTheme.backgroundPrimary,
-                  AsteriaTheme.backgroundSecondary,
-                ],
-              ),
-            ),
-          ),
+          Container(color: Theme.of(context).scaffoldBackgroundColor),
 
-          // Main content
+          // Main content (header removed)
           SafeArea(
             child: Column(
               children: [
-                // Header
-                _buildHeader(),
-
-                // Star map
                 Expanded(
                   child: FadeTransition(
                     opacity: _fadeAnimation,
@@ -272,81 +303,81 @@ class _StarMapPageState extends State<StarMapPage>
             ),
           ),
 
-          // Conversation card overlay
-          if (_showConversationCard && _selectedStar != null)
-            _buildConversationCard(),
+          // Profile card for current user (non-modal)
+          if (_showProfileCard && _selectedStar != null) _buildProfileCard(),
+
+          // Top-right filter button and panel
+          Positioned(
+            top: 8,
+            right: 8,
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.filter_list_rounded,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() => _showFilter = !_showFilter);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_showFilter)
+                    Container(
+                      width: 240,
+                      padding: const EdgeInsets.all(16),
+                      decoration: AsteriaTheme.elevatedCardDecoration(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Radius',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          Slider(
+                            value: _radiusThreshold,
+                            min: 80,
+                            max: 420,
+                            onChanged: (v) => setState(() {
+                              _radiusThreshold = v;
+                            }),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Similarity',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          Slider(
+                            value: _similarityMin,
+                            min: 0.0,
+                            max: 1.0,
+                            divisions: 20,
+                            onChanged: (v) => setState(() {
+                              _similarityMin = v;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Back button
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
-              Icons.arrow_back_ios_rounded,
-              color: AsteriaTheme.textPrimary,
-            ),
-          ),
-
-          // Title
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Star Map',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AsteriaTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'Pinch to zoom • Drag to pan • Scroll to explore',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AsteriaTheme.textSecondary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-
-          // Reset zoom button
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _scale = 1.0;
-                _offset = Offset.zero;
-              });
-            },
-            icon: const Icon(
-              Icons.center_focus_strong_rounded,
-              color: AsteriaTheme.textPrimary,
-            ),
-            tooltip: 'Reset zoom',
-          ),
-
-          // Search button
-          IconButton(
-            onPressed: () {
-              // Search functionality will be implemented later
-            },
-            icon: const Icon(
-              Icons.search_rounded,
-              color: AsteriaTheme.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Legacy header removed
 
   Widget _buildStarMap() {
     final screenSize = MediaQuery.of(context).size;
@@ -366,73 +397,179 @@ class _StarMapPageState extends State<StarMapPage>
     final minScaleX = screenSize.width / (contentWidth * screenSize.width);
     final minScaleY = screenSize.height / (contentHeight * screenSize.height);
     final minScale = (minScaleX > minScaleY ? minScaleX : minScaleY).clamp(
-      0.8,
+      0.3,
       1.0,
     );
 
+    final mapWidth = screenSize.width * 2;
+    final mapHeight = screenSize.height * 2;
+
     return GestureDetector(
       onTap: _closeConversationCard,
-      onScaleStart: (details) {
-        _lastPanPosition = details.focalPoint;
-      },
-      onScaleUpdate: (details) {
-        setState(() {
-          // Handle zoom with proper bounds
-          final newScale = (_scale * details.scale).clamp(minScale, 3.0);
-          _scale = newScale;
+      onDoubleTapDown: (details) => _doubleTapPosition = details.localPosition,
+      onDoubleTap: () {
+        final tapPos =
+            _doubleTapPosition ??
+            Offset(screenSize.width / 2, screenSize.height / 2);
+        final scenePoint = _transformController.toScene(tapPos);
+        final currentScale = _transformController.value.getMaxScaleOnAxis();
+        final targetScale = currentScale < 2.0
+            ? (currentScale * 1.5).clamp(0.3, 3.0)
+            : 1.0;
+        final scaleFactor = targetScale / currentScale;
 
-          // Handle pan with bounds checking
-          if (_lastPanPosition != null) {
-            final delta = details.focalPoint - _lastPanPosition!;
-            final newOffset = _offset + delta;
+        final Matrix4 newMatrix = _transformController.value.clone()
+          ..translateByVector3(vm.Vector3(-scenePoint.dx, -scenePoint.dy, 0.0))
+          ..scaleByVector3(vm.Vector3(scaleFactor, scaleFactor, 1.0))
+          ..translateByVector3(vm.Vector3(scenePoint.dx, scenePoint.dy, 0.0));
 
-            // Calculate pan bounds based on current scale
-            final maxOffsetX = (screenSize.width * (1 - 1 / _scale)) / 2;
-            final maxOffsetY = (screenSize.height * (1 - 1 / _scale)) / 2;
-
-            _offset = Offset(
-              newOffset.dx.clamp(-maxOffsetX, maxOffsetX),
-              newOffset.dy.clamp(-maxOffsetY, maxOffsetY),
-            );
-          }
-          _lastPanPosition = details.focalPoint;
-        });
+        _transformController.value = newMatrix;
       },
-      onScaleEnd: (details) {
-        _lastPanPosition = null;
-      },
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: Transform.translate(
-            offset: _offset,
-            child: Transform.scale(
-              scale: _scale,
-              child: SizedBox(
-                width: screenSize.width * 2, // Make map 2x wider for scrolling
-                height:
-                    screenSize.height * 2, // Make map 2x taller for scrolling
-                child: Stack(
-                  children: [
-                    // Grid background
-                    _buildGridBackground(),
-                    // Stars
-                    ..._stars.map((star) => _buildStar(star)),
-                  ],
-                ),
-              ),
-            ),
+      child: InteractiveViewer(
+        transformationController: _transformController,
+        constrained: false,
+        boundaryMargin: const EdgeInsets.all(200),
+        minScale: minScale.toDouble(),
+        maxScale: 3.0,
+        child: SizedBox(
+          width: mapWidth,
+          height: mapHeight,
+          child: Stack(
+            children: [
+              _buildConnectionsLayer(mapWidth, mapHeight),
+              ..._visibleStars().map((star) => _buildStar(star)),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGridBackground() {
+  Widget _buildConnectionsLayer(double mapWidth, double mapHeight) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color lineColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.06);
     return Positioned.fill(
-      child: CustomPaint(painter: GridBackgroundPainter()),
+      child: CustomPaint(
+        painter: ConnectionsPainter(
+          stars: _visibleStars(),
+          mapWidth: mapWidth,
+          mapHeight: mapHeight,
+          threshold: _radiusThreshold,
+          lineColor: lineColor,
+        ),
+      ),
     );
+  }
+
+  Widget _buildProfileCard() {
+    if (_selectedStar == null) return const SizedBox.shrink();
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomLeft,
+        child: Container(
+          margin: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+          padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
+          constraints: const BoxConstraints(maxWidth: 420),
+          decoration: AsteriaTheme.elevatedCardDecoration(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AsteriaTheme.accentColor,
+                    backgroundImage: _selectedStar!.avatarUrl != null
+                        ? NetworkImage(_selectedStar!.avatarUrl!)
+                        : null,
+                    child: _selectedStar!.avatarUrl == null
+                        ? const Icon(
+                            Icons.person,
+                            color: AsteriaTheme.secondaryColor,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: AsteriaTheme.spacingMedium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedStar!.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (_selectedStar!.isCurrentUser)
+                          Text(
+                            'You',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AsteriaTheme.textSecondary),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _closeProfileCard,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AsteriaTheme.spacingMedium),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    color: AsteriaTheme.textSecondary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: AsteriaTheme.spacingSmall),
+                  Text(
+                    'Interests:',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AsteriaTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AsteriaTheme.spacingSmall),
+              Wrap(
+                spacing: AsteriaTheme.spacingSmall,
+                runSpacing: AsteriaTheme.spacingSmall,
+                children: _selectedStar!.interests
+                    .map(
+                      (interest) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AsteriaTheme.spacingMedium,
+                          vertical: AsteriaTheme.spacingSmall,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AsteriaTheme.accentDark,
+                          borderRadius: BorderRadius.circular(
+                            AsteriaTheme.radiusSmall,
+                          ),
+                        ),
+                        child: Text(
+                          interest,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<StarData> _visibleStars() {
+    return _stars
+        .where((s) => s.isCurrentUser || s.similarity >= _similarityMin)
+        .toList(growable: false);
   }
 
   Widget _buildStar(StarData star) {
@@ -449,27 +586,29 @@ class _StarMapPageState extends State<StarMapPage>
       child: GestureDetector(
         onTap: () => _onStarTap(star),
         child: AnimatedBuilder(
-          animation: star.isCurrentUser ? _pulseAnimation : _fadeAnimation,
+          animation: Listenable.merge([
+            _fadeController,
+            _pulseController,
+            _spinController,
+          ]),
           builder: (context, child) {
-            return Transform.scale(
-              scale: star.isCurrentUser
-                  ? 1.0 + (_pulseAnimation.value * 0.2)
-                  : 1.0,
-              child: SizedBox(
-                width: star.isCurrentUser ? 60 : 40,
-                height: star.isCurrentUser ? 60 : 40,
-                child: CustomPaint(
-                  painter: star.isCurrentUser
-                      ? EnhancedUserStarPainter(
-                          color: AsteriaTheme.primaryColor,
-                          glowIntensity: _pulseAnimation.value * 0.8 + 0.2,
-                          animationValue: _pulseAnimation.value,
-                        )
-                      : StarPainter(
-                          color: _getStarColor(star.similarity),
-                          isGlowing: false,
-                          glowIntensity: 0.3,
-                        ),
+            final bool isTapped = _selectedStar?.id == star.id;
+            return Transform.rotate(
+              angle: isTapped ? _spinAnimation.value : 0.0,
+              child: Transform.scale(
+                scale: star.isCurrentUser
+                    ? 1.0 + (_pulseAnimation.value * 0.2)
+                    : 1.0,
+                child: SvgPicture.asset(
+                  'assets/Logos/star.svg',
+                  width: star.isCurrentUser ? 60 : 40,
+                  height: star.isCurrentUser ? 60 : 40,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             );
@@ -479,272 +618,9 @@ class _StarMapPageState extends State<StarMapPage>
     );
   }
 
-  Color _getStarColor(double similarity) {
-    if (similarity > 0.8) {
-      return AsteriaTheme.primaryColor;
-    } else if (similarity > 0.6) {
-      return AsteriaTheme.primaryLight;
-    } else if (similarity > 0.4) {
-      return AsteriaTheme.secondaryColor;
-    } else {
-      return AsteriaTheme.textTertiary;
-    }
-  }
+  // Legacy conversation card removed in favor of unified inline card
 
-  Widget _buildConversationCard() {
-    if (_selectedStar == null) return const SizedBox.shrink();
-
-    return Container(
-      color: Colors.black.withValues(alpha: 0.5),
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-          decoration: AsteriaTheme.elevatedCardDecoration(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                decoration: BoxDecoration(
-                  color: AsteriaTheme.primaryColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AsteriaTheme.radiusLarge),
-                    topRight: Radius.circular(AsteriaTheme.radiusLarge),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Star icon
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AsteriaTheme.accentColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.star_rounded,
-                        color: AsteriaTheme.primaryColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: AsteriaTheme.spacingMedium),
-
-                    // Name and similarity
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedStar!.name,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: AsteriaTheme.textOnPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                          Text(
-                            '${(_selectedStar!.similarity * 100).toInt()}% match',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: AsteriaTheme.textOnPrimary.withValues(
-                                    alpha: 0.8,
-                                  ),
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Close button
-                    IconButton(
-                      onPressed: _closeConversationCard,
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: AsteriaTheme.textOnPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Shared interests
-                    Text(
-                      'What you both like',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AsteriaTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: AsteriaTheme.spacingSmall),
-                    Wrap(
-                      spacing: AsteriaTheme.spacingSmall,
-                      runSpacing: AsteriaTheme.spacingSmall,
-                      children: _selectedStar!.interests
-                          .where(
-                            (interest) => [
-                              'Music',
-                              'Technology',
-                              'Art',
-                            ].contains(interest),
-                          )
-                          .map(
-                            (interest) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AsteriaTheme.spacingMedium,
-                                vertical: AsteriaTheme.spacingSmall,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AsteriaTheme.primaryColor.withValues(
-                                  alpha: 0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AsteriaTheme.radiusSmall,
-                                ),
-                              ),
-                              child: Text(
-                                interest,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AsteriaTheme.primaryColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-
-                    const SizedBox(height: AsteriaTheme.spacingLarge),
-
-                    // Conversation starters
-                    Text(
-                      'Conversation starters',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AsteriaTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: AsteriaTheme.spacingSmall),
-                    ..._buildConversationStarters().map(
-                      (starter) => Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: AsteriaTheme.spacingSmall,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.only(
-                                top: 6,
-                                right: AsteriaTheme.spacingSmall,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AsteriaTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                starter,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: AsteriaTheme.textSecondary,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: AsteriaTheme.spacingLarge),
-
-                    // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              // Start conversation functionality will be implemented later
-                              _closeConversationCard();
-                            },
-                            icon: const Icon(Icons.chat_rounded),
-                            label: const Text('Start Chat'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AsteriaTheme.primaryColor,
-                              foregroundColor: AsteriaTheme.textOnPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AsteriaTheme.spacingMedium),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              // Save connection functionality will be implemented later
-                              _closeConversationCard();
-                            },
-                            icon: const Icon(Icons.bookmark_rounded),
-                            label: const Text('Save'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AsteriaTheme.primaryColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<String> _buildConversationStarters() {
-    if (_selectedStar == null) return [];
-
-    final sharedInterests = _selectedStar!.interests
-        .where((interest) => ['Music', 'Technology', 'Art'].contains(interest))
-        .toList();
-
-    if (sharedInterests.contains('Music')) {
-      return [
-        'What\'s your favorite music genre?',
-        'Any recent concerts you\'ve been to?',
-        'Do you play any instruments?',
-      ];
-    } else if (sharedInterests.contains('Technology')) {
-      return [
-        'What programming languages do you use?',
-        'Any interesting tech projects you\'re working on?',
-        'What\'s your take on AI developments?',
-      ];
-    } else if (sharedInterests.contains('Art')) {
-      return [
-        'What\'s your favorite art style?',
-        'Do you create any art yourself?',
-        'Any art exhibitions you\'ve visited recently?',
-      ];
-    }
-
-    return [
-      'What are you working on these days?',
-      'Any interesting hobbies you\'ve picked up?',
-      'What\'s something you\'re excited about?',
-    ];
-  }
+  // Legacy conversation starters retained for reference (unused)
 }
 
 class StarData {
@@ -755,6 +631,7 @@ class StarData {
   final bool isCurrentUser;
   final List<String> interests;
   final double similarity;
+  final String? avatarUrl;
 
   StarData({
     required this.id,
@@ -764,6 +641,7 @@ class StarData {
     required this.isCurrentUser,
     required this.interests,
     required this.similarity,
+    this.avatarUrl,
   });
 }
 
@@ -848,19 +726,7 @@ class StarPainter extends CustomPainter {
 class GridBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AsteriaTheme.textTertiary.withValues(alpha: 0.15)
-      ..strokeWidth = 0.5;
-
-    // Draw vertical lines
-    for (double x = 0; x <= size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-
-    // Draw horizontal lines
-    for (double y = 0; y <= size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
+    // No-op: grid background replaced by ConnectionsPainter
   }
 
   @override
@@ -1008,5 +874,56 @@ class EnhancedUserStarPainter extends CustomPainter {
         (oldDelegate.color != color ||
             oldDelegate.glowIntensity != glowIntensity ||
             oldDelegate.animationValue != animationValue);
+  }
+}
+
+class ConnectionsPainter extends CustomPainter {
+  final List<StarData> stars;
+  final double mapWidth;
+  final double mapHeight;
+  final double threshold;
+  final Color? lineColor;
+
+  ConnectionsPainter({
+    required this.stars,
+    required this.mapWidth,
+    required this.mapHeight,
+    this.threshold = 240.0,
+    this.lineColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (stars.isEmpty) return;
+
+    final paint = Paint()
+      ..color = (lineColor ?? Colors.black.withValues(alpha: 0.06))
+      ..strokeWidth = 1.0;
+
+    final points = stars
+        .map((s) => Offset(s.x * mapWidth, s.y * mapHeight))
+        .toList(growable: false);
+
+    for (int i = 0; i < points.length; i++) {
+      for (int j = i + 1; j < points.length; j++) {
+        final p1 = points[i];
+        final p2 = points[j];
+        final dx = p1.dx - p2.dx;
+        final dy = p1.dy - p2.dy;
+        final dist2 = dx * dx + dy * dy;
+        if (dist2 < threshold * threshold) {
+          canvas.drawLine(p1, p2, paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ConnectionsPainter oldDelegate) {
+    return oldDelegate.stars != stars ||
+        oldDelegate.mapWidth != mapWidth ||
+        oldDelegate.mapHeight != mapHeight ||
+        oldDelegate.threshold != threshold ||
+        oldDelegate.lineColor != lineColor;
   }
 }
