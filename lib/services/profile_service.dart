@@ -1,10 +1,14 @@
+import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mime/mime.dart';
+import '../models/profile.dart';
 
 class ProfileService {
   static const String _kNameKey = 'profile_name';
   static const String _kEmailKey = 'profile_email';
   static const String _kPhotoKey = 'profile_photo';
+  static const String _bucket = 'profile-images';
 
   /// Load cached profile from local storage. Returns null if missing.
   static Future<Map<String, String>?> loadLocalProfile() async {
@@ -48,6 +52,88 @@ class ProfileService {
     }
     if (profile['photo'] != null) {
       await prefs.setString(_kPhotoKey, profile['photo']!);
+    }
+  }
+
+  // ==============================
+  // Supabase-backed profile methods
+  // ==============================
+
+  static SupabaseClient get _client => Supabase.instance.client;
+
+  static Future<Profile?> getProfile(String userId) async {
+    final data = await _client
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+    if (data == null) return null;
+    return Profile.fromMap(Map<String, dynamic>.from(data));
+  }
+
+  static Future<bool> isProfileComplete(String userId) async {
+    final profile = await getProfile(userId);
+    return profile?.isComplete == true;
+  }
+
+  static Future<Profile> upsertProfile({
+    required String userId,
+    required String fullName,
+    required String starColor,
+    String? avatarPath,
+  }) async {
+    final payload = <String, dynamic>{
+      'id': userId,
+      'full_name': fullName,
+      'star_color': starColor,
+      if (avatarPath != null) 'avatar_url': avatarPath,
+    };
+
+    final data = await _client
+        .from('profiles')
+        .upsert(payload, onConflict: 'id')
+        .select()
+        .single();
+
+    return Profile.fromMap(Map<String, dynamic>.from(data));
+  }
+
+  static Future<String> uploadAvatarFromBytes({
+    required String userId,
+    required Uint8List bytes,
+    String? fileName,
+    String? contentType,
+  }) async {
+    final detectedType =
+        contentType ?? lookupMimeType(fileName ?? '', headerBytes: bytes);
+    final ext = _fileExtensionForMime(detectedType);
+    final objectPath = 'profiles/$userId/avatar$ext';
+
+    await _client.storage
+        .from(_bucket)
+        .uploadBinary(
+          objectPath,
+          bytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+    return objectPath;
+  }
+
+  static String getPublicAvatarUrl(String objectPath) {
+    return _client.storage.from(_bucket).getPublicUrl(objectPath);
+  }
+
+  static String _fileExtensionForMime(String? mimeType) {
+    switch (mimeType) {
+      case 'image/png':
+        return '.png';
+      case 'image/webp':
+        return '.webp';
+      case 'image/gif':
+        return '.gif';
+      case 'image/jpeg':
+      default:
+        return '.jpg';
     }
   }
 }

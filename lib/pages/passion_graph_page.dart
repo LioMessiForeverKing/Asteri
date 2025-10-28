@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/passion_graph.dart';
 import '../widgets/passion_graph.dart';
 import '../theme.dart';
-import 'star_map_page.dart';
+import 'profile_setup_page.dart';
 
 class PassionGraphPage extends StatelessWidget {
   final GraphSnapshot snapshot;
@@ -52,7 +52,7 @@ class PassionGraphPage extends StatelessWidget {
                             Navigator.of(context).push(
                               PageRouteBuilder(
                                 pageBuilder: (context, animation, secondary) =>
-                                    const StarMapPage(),
+                                    const ProfileSetupPage(),
                                 transitionsBuilder:
                                     (context, animation, secondary, child) {
                                       return FadeTransition(

@@ -172,3 +172,96 @@ create policy "delete own token" on public.user_push_tokens
 -- Indexes
 create index if not exists idx_user_push_tokens_user_id on public.user_push_tokens(user_id);
 
+
+-- ================================
+-- User profiles + avatar storage
+-- ================================
+
+-- Profiles table (keyed to auth.users)
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text not null check (char_length(full_name) between 1 and 100),
+  avatar_url text,
+  star_color text not null check (star_color ~ '^#(?:[0-9a-fA-F]{3}){1,2}$'),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Updated-at trigger
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security definer as $$
+begin
+  new.updated_at = now();
+  return new;
+end;$$;
+
+drop trigger if exists set_profiles_updated_at on public.profiles;
+create trigger set_profiles_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
+-- RLS
+alter table public.profiles enable row level security;
+
+-- Allow each user to read their own profile
+drop policy if exists "select_own_profile" on public.profiles;
+create policy "select_own_profile"
+on public.profiles for select
+using (auth.uid() = id);
+
+-- Allow each user to insert their own profile
+drop policy if exists "insert_own_profile" on public.profiles;
+create policy "insert_own_profile"
+on public.profiles for insert
+with check (auth.uid() = id);
+
+-- Allow each user to update their own profile
+drop policy if exists "update_own_profile" on public.profiles;
+create policy "update_own_profile"
+on public.profiles for update
+using (auth.uid() = id)
+with check (auth.uid() = id);
+
+-- ================================
+-- Storage bucket for profile avatars
+-- ================================
+
+-- Create public bucket (compatible with older storage versions)
+insert into storage.buckets (id, name, public)
+values ('profile-images', 'profile-images', true)
+on conflict (id) do nothing;
+
+-- Public read from the bucket
+drop policy if exists "profile_images_public_read" on storage.objects;
+create policy "profile_images_public_read"
+on storage.objects for select
+using (bucket_id = 'profile-images');
+
+-- Owners (authenticated users) can insert their own objects
+drop policy if exists "profile_images_insert_own" on storage.objects;
+create policy "profile_images_insert_own"
+on storage.objects for insert
+with check (
+  bucket_id = 'profile-images' and owner = auth.uid()
+);
+
+-- Owners can update their own objects
+drop policy if exists "profile_images_update_own" on storage.objects;
+create policy "profile_images_update_own"
+on storage.objects for update
+using (
+  bucket_id = 'profile-images' and owner = auth.uid()
+)
+with check (
+  bucket_id = 'profile-images' and owner = auth.uid()
+);
+
+-- Owners can delete their own objects
+drop policy if exists "profile_images_delete_own" on storage.objects;
+create policy "profile_images_delete_own"
+on storage.objects for delete
+using (
+  bucket_id = 'profile-images' and owner = auth.uid()
+);

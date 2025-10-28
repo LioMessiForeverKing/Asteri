@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 import '../theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/profile_service.dart';
 
 class StarMapPage extends StatefulWidget {
   const StarMapPage({super.key});
@@ -204,6 +206,10 @@ class _StarMapPageState extends State<StarMapPage>
   double _radiusThreshold = 240.0;
   double _similarityMin = 0.0;
 
+  // Current user's visual settings
+  Color _userStarColor = AsteriaTheme.accentColor;
+  RealtimeChannel? _profileChannel;
+
   // Zoom and pan state (InteractiveViewer)
   late TransformationController _transformController;
   Offset? _doubleTapPosition;
@@ -241,6 +247,8 @@ class _StarMapPageState extends State<StarMapPage>
     _spinAnimation = Tween<double>(begin: 0.0, end: -math.pi).animate(
       CurvedAnimation(parent: _spinController, curve: Curves.easeOutCubic),
     );
+
+    _loadCurrentUserProfile();
   }
 
   @override
@@ -249,7 +257,121 @@ class _StarMapPageState extends State<StarMapPage>
     _pulseController.dispose();
     _spinController.dispose();
     _transformController.dispose();
+    if (_profileChannel != null) {
+      Supabase.instance.client.removeChannel(_profileChannel!);
+    }
     super.dispose();
+  }
+
+  Future<void> _loadCurrentUserProfile() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      final profile = await ProfileService.getProfile(userId);
+      if (profile == null) return;
+
+      // Update star color
+      final color = _parseHexColor(profile.starColor);
+
+      // Compute avatar URL if stored as storage path
+      final String? avatarUrl =
+          (profile.avatarUrl == null || profile.avatarUrl!.isEmpty)
+          ? null
+          : ProfileService.getPublicAvatarUrl(profile.avatarUrl!);
+
+      // Replace the current user star entry (index 0)
+      if (_stars.isNotEmpty && _stars.first.isCurrentUser) {
+        _stars[0] = StarData(
+          id: 'you',
+          name: profile.fullName.isNotEmpty ? profile.fullName : 'You',
+          x: _stars[0].x,
+          y: _stars[0].y,
+          isCurrentUser: true,
+          interests: _stars[0].interests,
+          similarity: 1.0,
+          avatarUrl: avatarUrl ?? _stars[0].avatarUrl,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _userStarColor = color;
+        });
+      }
+
+      // Subscribe to realtime profile changes to reflect star color updates
+      _profileChannel ??= Supabase.instance.client
+          .channel('profile-changes-$userId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'profiles',
+            callback: (payload) {
+              final Map<String, dynamic>? newRecord =
+                  payload.newRecord as Map<String, dynamic>?;
+              if (newRecord == null) return;
+              if (newRecord['id'] != userId) return;
+              final String? newColorHex = newRecord['star_color'] as String?;
+              final String? newName = newRecord['full_name'] as String?;
+              final String? newAvatarPath = newRecord['avatar_url'] as String?;
+              final Color? newColor = newColorHex != null
+                  ? _parseHexColor(newColorHex)
+                  : null;
+              final String? newAvatarUrl =
+                  (newAvatarPath == null || newAvatarPath.isEmpty)
+                  ? null
+                  : ProfileService.getPublicAvatarUrl(newAvatarPath);
+              if (!mounted) return;
+              setState(() {
+                if (newColor != null) _userStarColor = newColor;
+                if (_stars.isNotEmpty && _stars.first.isCurrentUser) {
+                  _stars[0] = StarData(
+                    id: 'you',
+                    name: (newName != null && newName.isNotEmpty)
+                        ? newName
+                        : _stars[0].name,
+                    x: _stars[0].x,
+                    y: _stars[0].y,
+                    isCurrentUser: true,
+                    interests: _stars[0].interests,
+                    similarity: 1.0,
+                    avatarUrl: newAvatarUrl ?? _stars[0].avatarUrl,
+                  );
+                }
+              });
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'profiles',
+            callback: (payload) {
+              final Map<String, dynamic>? newRecord =
+                  payload.newRecord as Map<String, dynamic>?;
+              if (newRecord == null) return;
+              if (newRecord['id'] != userId) return;
+              final String? newColorHex = newRecord['star_color'] as String?;
+              if (newColorHex != null) {
+                final color = _parseHexColor(newColorHex);
+                if (!mounted) return;
+                setState(() => _userStarColor = color);
+              }
+            },
+          )
+          .subscribe();
+    } catch (_) {
+      // Non-fatal; fall back to defaults
+    }
+  }
+
+  Color _parseHexColor(String hex) {
+    var value = hex.trim();
+    if (value.startsWith('#')) value = value.substring(1);
+    if (value.length == 3) {
+      value = value.split('').map((c) => '$c$c').join();
+    }
+    final intColor = int.tryParse(value, radix: 16) ?? 0xFFFFFF;
+    return Color(0xFF000000 | intColor);
   }
 
   void _onStarTap(StarData star) {
@@ -604,9 +726,11 @@ class _StarMapPageState extends State<StarMapPage>
                   width: star.isCurrentUser ? 60 : 40,
                   height: star.isCurrentUser ? 60 : 40,
                   colorFilter: ColorFilter.mode(
-                    Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : Colors.black,
+                    star.isCurrentUser
+                        ? _userStarColor
+                        : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black),
                     BlendMode.srcIn,
                   ),
                 ),

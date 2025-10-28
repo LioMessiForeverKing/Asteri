@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.9.1
+  image_picker: ^1.0.4
+  path_provider: ^2.1.1
+  mime: ^1.0.4
   google_sign_in: ^6.2.1
   http: ^1.2.2
   flutter_svg: ^2.0.10+1

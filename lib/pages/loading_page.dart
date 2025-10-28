@@ -8,6 +8,7 @@ import '../widgets/asteria_loading_animation.dart';
 import 'dart:math' as math;
 import '../theme.dart';
 import 'root_nav_page.dart';
+import 'passion_graph_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoadingPage extends StatefulWidget {
@@ -140,15 +141,7 @@ class _LoadingPageState extends State<LoadingPage>
         _statusMessage = 'Almost ready...';
       });
 
-      // Step 6: Complete
-      setState(() {
-        _statusMessage = 'All set!';
-      });
-
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
-
-      // Mark user as successfully set up
+      // Step 6: Mark user as successfully set up
       try {
         final userId = Supabase.instance.client.auth.currentUser?.id;
         if (userId != null) {
@@ -161,12 +154,17 @@ class _LoadingPageState extends State<LoadingPage>
         // Non-fatal: continue navigation
       }
 
-      // Navigate into app shell with bottom navigation
+      // Navigate to Passion Graph preview before entering the app
+      setState(() {
+        _statusMessage = 'Preview your map...';
+      });
+
+      await Future.delayed(const Duration(milliseconds: 200));
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const RootNavPage(),
+              PassionGraphPage(snapshot: snapshot),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: AsteriaTheme.animationMedium,
