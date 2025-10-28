@@ -7,8 +7,7 @@ import '../models/passion_graph.dart';
 import '../widgets/asteria_loading_animation.dart';
 import 'dart:math' as math;
 import '../theme.dart';
-import 'star_map_page.dart';
-import 'passion_graph_page.dart';
+import 'root_nav_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoadingPage extends StatefulWidget {
@@ -24,7 +23,6 @@ class _LoadingPageState extends State<LoadingPage>
 
   String _statusMessage = 'Initializing...';
   bool _showContinue = false;
-  GraphSnapshot? _graph;
 
   // Animation values
   late Animation<double> _fadeAnimation;
@@ -139,7 +137,6 @@ class _LoadingPageState extends State<LoadingPage>
       }
 
       setState(() {
-        _graph = snapshot;
         _statusMessage = 'Almost ready...';
       });
 
@@ -164,12 +161,12 @@ class _LoadingPageState extends State<LoadingPage>
         // Non-fatal: continue navigation
       }
 
-      // Immediately navigate to PassionGraphPage and clear the loading page
+      // Navigate into app shell with bottom navigation
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              PassionGraphPage(snapshot: _graph!),
+              const RootNavPage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: AsteriaTheme.animationMedium,
@@ -190,7 +187,7 @@ class _LoadingPageState extends State<LoadingPage>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const StarMapPage(),
+            const RootNavPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
