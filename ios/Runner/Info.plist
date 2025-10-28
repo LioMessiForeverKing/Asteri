@@ -45,6 +45,10 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your approximate location to match you with nearby people who share your interests.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We use your approx. location to suggest nearby people with similar interests while you are using the app. We do not track precise background location.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We use your approx. location to suggest nearby people with similar interests while you are using the app.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
