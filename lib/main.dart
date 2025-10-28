@@ -6,6 +6,7 @@ import 'pages/auth_gate.dart';
 import 'utils/constants.dart';
 import 'theme.dart';
 import 'services/push_service.dart';
+import 'services/location_service.dart';
 import 'services/theme_controller.dart';
 
 Future<void> main() async {
@@ -26,20 +27,33 @@ class MainApp extends StatefulWidget {
   State<MainApp> createState() => _MainAppState();
 }
 
-class _MainAppState extends State<MainApp> {
+class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ThemeController.instance.addListener(_onThemeChanged);
+    // Best-effort location refresh on app start
+    // Non-blocking, internally rate-limited
+    unawaited(LocationService.maybeUpdateLocation());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     ThemeController.instance.removeListener(_onThemeChanged);
     super.dispose();
   }
 
   void _onThemeChanged() => setState(() {});
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh location when app becomes active, rate-limited inside service
+      unawaited(LocationService.maybeUpdateLocation());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

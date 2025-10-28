@@ -265,3 +265,32 @@ on storage.objects for delete
 using (
   bucket_id = 'profile-images' and owner = auth.uid()
 );
+
+-- ================================
+-- User locations for proximity matching
+-- ================================
+
+create table if not exists public.user_locations (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  latitude double precision,
+  longitude double precision,
+  geohash text,
+  precision smallint not null default 5 check (precision between 3 and 8),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_locations enable row level security;
+
+drop policy if exists "read own location" on public.user_locations;
+create policy "read own location" on public.user_locations
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "upsert own location" on public.user_locations;
+create policy "upsert own location" on public.user_locations
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "update own location" on public.user_locations;
+create policy "update own location" on public.user_locations
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists idx_user_locations_geohash on public.user_locations(geohash);
