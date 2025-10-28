@@ -49,10 +49,22 @@ class PassionGraphPage extends StatelessWidget {
                         height: 48,
                         child: ElevatedButton(
                           onPressed: () {
+                            // Prepare top interests from snapshot
+                            final nodes = List.of(snapshot.nodes);
+                            nodes.sort((a, b) => b.weight.compareTo(a.weight));
+                            final topInterests = nodes
+                                .map((n) => n.label.trim())
+                                .where((s) => s.isNotEmpty)
+                                .toSet()
+                                .take(20)
+                                .toList();
+
                             Navigator.of(context).push(
                               PageRouteBuilder(
                                 pageBuilder: (context, animation, secondary) =>
-                                    const ProfileSetupPage(),
+                                    ProfileSetupPage(
+                                      initialInterests: topInterests,
+                                    ),
                                 transitionsBuilder:
                                     (context, animation, secondary, child) {
                                       return FadeTransition(

@@ -7,7 +7,8 @@ import '../theme.dart';
 import 'root_nav_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
-  const ProfileSetupPage({super.key});
+  final List<String>? initialInterests;
+  const ProfileSetupPage({super.key, this.initialInterests});
 
   @override
   State<ProfileSetupPage> createState() => _ProfileSetupPageState();
@@ -106,6 +107,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         fullName: _nameCtrl.text.trim(),
         starColor: _colorToHex(_selectedColor),
         avatarPath: avatarPath,
+        interests: widget.initialInterests,
       );
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(

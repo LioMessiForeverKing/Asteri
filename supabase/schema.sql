@@ -183,6 +183,7 @@ create table if not exists public.profiles (
   full_name text not null check (char_length(full_name) between 1 and 100),
   avatar_url text,
   star_color text not null check (star_color ~ '^#(?:[0-9a-fA-F]{3}){1,2}$'),
+  interests text[],
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

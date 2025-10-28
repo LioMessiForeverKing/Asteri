@@ -81,12 +81,14 @@ class ProfileService {
     required String fullName,
     required String starColor,
     String? avatarPath,
+    List<String>? interests,
   }) async {
     final payload = <String, dynamic>{
       'id': userId,
       'full_name': fullName,
       'star_color': starColor,
       if (avatarPath != null) 'avatar_url': avatarPath,
+      if (interests != null) 'interests': interests,
     };
 
     final data = await _client
