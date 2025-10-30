@@ -116,13 +116,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Service client bypasses RLS to read others' minimal fields
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Load profiles and embeddings
-    const [{ data: profiles, error: pErr }, { data: embeds, error: eErr }] = await Promise.all([
+    // Load profiles, embeddings, and friend connections
+    const [
+      { data: profiles, error: pErr },
+      { data: embeds, error: eErr },
+      { data: friends, error: fErr }
+    ] = await Promise.all([
       svc.from("profiles").select("id, full_name, avatar_url, star_color, interests"),
       svc.from("user_embeddings").select("user_id, vector"),
+      svc.from("friend_requests").select("sender_id, receiver_id, status").or(`sender_id.eq.${callerId},receiver_id.eq.${callerId}`).eq("status", "accepted"),
     ]);
     if (pErr) throw pErr;
     if (eErr) throw eErr;
+    if (fErr) throw fErr;
+
+    // Log friend connections for the caller
+    const friendConnections = (friends as any[] | null) ?? [];
+    const friendIds = new Set<string>();
+    friendConnections.forEach((f) => {
+      if (f.sender_id === callerId) friendIds.add(f.receiver_id);
+      if (f.receiver_id === callerId) friendIds.add(f.sender_id);
+    });
+
+    console.log(`User ${callerId} logged in - has ${friendIds.size} friend connections`);
+    if (friendIds.size > 0) {
+      console.log(`Friends: ${Array.from(friendIds).join(', ')}`);
+    }
 
     const EXPECTED_DIM = Number(Deno.env.get("EMBED_DIM") ?? "3072");
 

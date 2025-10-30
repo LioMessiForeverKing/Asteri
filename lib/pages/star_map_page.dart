@@ -40,6 +40,7 @@ class _StarMapPageState extends State<StarMapPage>
       avatarUrl: null,
       percent: 100,
       stars: 5,
+      starColor: AsteriaTheme.accentColor,
     ),
   ];
 
@@ -51,8 +52,6 @@ class _StarMapPageState extends State<StarMapPage>
   double _radiusThreshold = 240.0;
   double _similarityMin = 0.0;
 
-  // Current user's visual settings
-  Color _userStarColor = AsteriaTheme.accentColor;
   RealtimeChannel? _profileChannel;
   bool _loading = false;
   String? _error;
@@ -147,12 +146,13 @@ class _StarMapPageState extends State<StarMapPage>
           avatarUrl: avatarUrl ?? _stars[0].avatarUrl,
           percent: 100,
           stars: 5,
+          starColor: color,
         );
       }
 
       if (mounted) {
         setState(() {
-          _userStarColor = color;
+          // Star color updated in StarData
         });
       }
 
@@ -180,7 +180,6 @@ class _StarMapPageState extends State<StarMapPage>
                   : ProfileService.getPublicAvatarUrl(newAvatarPath);
               if (!mounted) return;
               setState(() {
-                if (newColor != null) _userStarColor = newColor;
                 if (_stars.isNotEmpty && _stars.first.isCurrentUser) {
                   _stars[0] = StarData(
                     id: 'you',
@@ -196,6 +195,7 @@ class _StarMapPageState extends State<StarMapPage>
                     avatarUrl: newAvatarUrl ?? _stars[0].avatarUrl,
                     percent: 100,
                     stars: 5,
+                    starColor: newColor ?? _stars[0].starColor,
                   );
                 }
               });
@@ -210,12 +210,7 @@ class _StarMapPageState extends State<StarMapPage>
                   payload.newRecord as Map<String, dynamic>?;
               if (newRecord == null) return;
               if (newRecord['id'] != userId) return;
-              final String? newColorHex = newRecord['star_color'] as String?;
-              if (newColorHex != null) {
-                final color = _parseHexColor(newColorHex);
-                if (!mounted) return;
-                setState(() => _userStarColor = color);
-              }
+              // Profile insert handling - star color is handled by the update listener above
             },
           )
           .subscribe();
@@ -271,6 +266,7 @@ class _StarMapPageState extends State<StarMapPage>
             avatarUrl: m.avatarUrl,
             percent: m.scorePercent,
             stars: m.stars,
+            starColor: _parseHexColor(m.starColor),
           ),
         );
       }
@@ -869,11 +865,7 @@ class _StarMapPageState extends State<StarMapPage>
                   width: star.isCurrentUser ? 60 : 40,
                   height: star.isCurrentUser ? 60 : 40,
                   colorFilter: ColorFilter.mode(
-                    star.isCurrentUser
-                        ? _userStarColor
-                        : (Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : Colors.black),
+                    star.starColor,
                     BlendMode.srcIn,
                   ),
                 ),
@@ -902,6 +894,7 @@ class StarData {
   final String? avatarUrl;
   final int percent;
   final int stars;
+  final Color starColor;
 
   StarData({
     required this.id,
@@ -915,6 +908,7 @@ class StarData {
     this.avatarUrl,
     required this.percent,
     required this.stars,
+    required this.starColor,
   });
 }
 
