@@ -35,6 +35,15 @@ class AsteriaTheme {
   static const Color textTertiary = Color(0xFF757575); // Light grey
   static const Color textOnPrimary = Color(0xFFFFFFFF); // White on dark
 
+  // Dark Mode Palette
+  static const Color backgroundPrimaryDark = Color(0xFF0F0F0F);
+  static const Color backgroundSecondaryDark = Color(0xFF181818);
+  static const Color backgroundTertiaryDark = Color(0xFF202020);
+  static const Color accentColorDark = Color(0xFFFFFFFF);
+  static const Color textPrimaryDark = Color(0xFFF5F5F5);
+  static const Color textSecondaryDark = Color(0xFFB9B9B9);
+  static const Color textTertiaryDark = Color(0xFF8C8C8C);
+
   // Additional Colors - Muted, sophisticated
   static const Color successColor = Color(0xFF4CAF50); // Clean green
   static const Color warningColor = Color(0xFFFF9800); // Orange
@@ -595,6 +604,24 @@ class AsteriaTheme {
   }
 
   static ThemeData get darkTheme {
+    final textTheme = TextTheme(
+      displayLarge: displayLarge.copyWith(color: textPrimaryDark),
+      displayMedium: displayMedium.copyWith(color: textPrimaryDark),
+      displaySmall: displaySmall.copyWith(color: textPrimaryDark),
+      headlineLarge: headlineLarge.copyWith(color: textPrimaryDark),
+      headlineMedium: headlineMedium.copyWith(color: textPrimaryDark),
+      headlineSmall: headlineSmall.copyWith(color: textPrimaryDark),
+      titleLarge: titleLarge.copyWith(color: textPrimaryDark),
+      titleMedium: titleMedium.copyWith(color: textPrimaryDark),
+      titleSmall: titleSmall.copyWith(color: textPrimaryDark),
+      bodyLarge: bodyLarge.copyWith(color: textPrimaryDark),
+      bodyMedium: bodyMedium.copyWith(color: textPrimaryDark),
+      bodySmall: bodySmall.copyWith(color: textSecondaryDark),
+      labelLarge: labelLarge.copyWith(color: textPrimaryDark),
+      labelMedium: labelMedium.copyWith(color: textSecondaryDark),
+      labelSmall: labelSmall.copyWith(color: textTertiaryDark),
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -604,22 +631,22 @@ class AsteriaTheme {
         onPrimary: Colors.white,
         primaryContainer: primaryDark,
         onPrimaryContainer: Colors.white,
-        secondary: Colors.white,
+        secondary: accentColorDark,
         onSecondary: Colors.black,
-        secondaryContainer: Color(0xFF2A2A2A),
-        onSecondaryContainer: Colors.white,
-        tertiary: Color(0xFF121212),
-        onTertiary: Colors.white,
-        tertiaryContainer: Color(0xFF1E1E1E),
-        onTertiaryContainer: Colors.white,
+        secondaryContainer: backgroundSecondaryDark,
+        onSecondaryContainer: accentColorDark,
+        tertiary: backgroundTertiaryDark,
+        onTertiary: accentColorDark,
+        tertiaryContainer: backgroundSecondaryDark,
+        onTertiaryContainer: accentColorDark,
         error: errorColor,
         onError: Colors.white,
         errorContainer: Color(0xFF8A1C1C),
         onErrorContainer: Colors.white,
-        surface: Color(0xFF0F0F0F),
-        onSurface: Colors.white,
-        surfaceContainerHighest: Color(0xFF1A1A1A),
-        onSurfaceVariant: Color(0xFFBBBBBB),
+        surface: backgroundPrimaryDark,
+        onSurface: textPrimaryDark,
+        surfaceContainerHighest: backgroundSecondaryDark,
+        onSurfaceVariant: textSecondaryDark,
         outline: Color(0xFF3A3A3A),
         outlineVariant: Color(0xFF2A2A2A),
         shadow: shadowDark,
@@ -628,33 +655,38 @@ class AsteriaTheme {
         onInverseSurface: Colors.black,
         inversePrimary: primaryLight,
       ),
-      scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-      textTheme: const TextTheme(
-        displayLarge: displayLarge,
-        displayMedium: displayMedium,
-        displaySmall: displaySmall,
-        headlineLarge: headlineLarge,
-        headlineMedium: headlineMedium,
-        headlineSmall: headlineSmall,
-        titleLarge: titleLarge,
-        titleMedium: titleMedium,
-        titleSmall: titleSmall,
-        bodyLarge: bodyLarge,
-        bodyMedium: bodyMedium,
-        bodySmall: bodySmall,
-        labelLarge: labelLarge,
-        labelMedium: labelMedium,
-        labelSmall: labelSmall,
+      scaffoldBackgroundColor: backgroundPrimaryDark,
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        elevation: elevationLow,
+        scrolledUnderElevation: elevationLow,
+        centerTitle: false,
+        backgroundColor: backgroundPrimaryDark,
+        foregroundColor: textPrimaryDark,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: elevationLow,
-        color: const Color(0xFF1A1A1A),
+        color: backgroundSecondaryDark,
         surfaceTintColor: Colors.transparent,
         shadowColor: shadowDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
         ),
         margin: const EdgeInsets.all(spacingSmall),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: backgroundSecondaryDark,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFF2E2E2E),
+        thickness: 1,
+        space: spacingMedium,
       ),
     );
   }

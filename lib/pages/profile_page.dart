@@ -121,13 +121,22 @@ class ProfilePage extends StatelessWidget {
                         child: Text(
                           'Passionate about Technology and Gaming!',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AsteriaTheme.textSecondary),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                       ),
 
                       const SizedBox(height: AsteriaTheme.spacingLarge),
-                      const Divider(height: 1),
+                      Divider(
+                        height: 1,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withValues(alpha: 0.6),
+                      ),
                       const SizedBox(height: AsteriaTheme.spacingLarge),
 
                       // Section header
@@ -137,7 +146,9 @@ class ProfilePage extends StatelessWidget {
                           'INTERESTS',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
-                                color: AsteriaTheme.textSecondary,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 letterSpacing: 1.2,
                               ),
                         ),
@@ -177,14 +188,17 @@ class ProfilePage extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AsteriaTheme.backgroundSecondary,
+        color: Theme.of(context).colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(AsteriaTheme.radiusLarge),
         boxShadow: const [
           BoxShadow(color: AsteriaTheme.shadowLight, blurRadius: 6),
         ],
       ),
       child: IconButton(
-        icon: Icon(icon, color: AsteriaTheme.textPrimary),
+        icon: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onSecondaryContainer,
+        ),
         onPressed: onPressed,
       ),
     );
@@ -194,7 +208,7 @@ class ProfilePage extends StatelessWidget {
     return Container(
       width: 220,
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.all(AsteriaTheme.spacingXLarge),
@@ -208,7 +222,9 @@ class ProfilePage extends StatelessWidget {
             interest.name,
             style: Theme.of(
               context,
-            ).textTheme.titleLarge?.copyWith(color: AsteriaTheme.accentColor),
+            ).textTheme.titleLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -370,14 +386,20 @@ void _showSettingsDialog(BuildContext context) {
                             icon: const Icon(Icons.upload_rounded),
                             label: const Text('Upload'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AsteriaTheme.backgroundSecondary,
-                              foregroundColor: AsteriaTheme.textPrimary,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .secondaryContainer,
+                              foregroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                   AsteriaTheme.radiusLarge,
                                 ),
-                                side: const BorderSide(
-                                  color: AsteriaTheme.textSecondary,
+                                side: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant,
                                   width: 1,
                                 ),
                               ),
@@ -396,7 +418,9 @@ void _showSettingsDialog(BuildContext context) {
                         controller: nameCtrl,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: AsteriaTheme.backgroundSecondary,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
                               AsteriaTheme.radiusLarge,
@@ -447,9 +471,11 @@ void _showSettingsDialog(BuildContext context) {
                       const SizedBox(height: AsteriaTheme.spacingLarge),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.wb_sunny_outlined,
-                            color: AsteriaTheme.textSecondary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                           const SizedBox(width: AsteriaTheme.spacingSmall),
                           Text(

@@ -375,6 +375,8 @@ class _StarMapPageState extends State<StarMapPage>
   }
 
   void _onStarTap(StarData star) {
+    _spinController.stop();
+
     setState(() {
       _selectedStar = star;
       _showProfileCard = false;
@@ -383,11 +385,14 @@ class _StarMapPageState extends State<StarMapPage>
     // Haptic feedback
     HapticFeedback.lightImpact();
 
-    // Trigger quick 180-degree CCW rotation on tapped star, then open target
-    _spinController.forward(from: 0).whenComplete(() {
+    // Defer spin start to next frame so selected star is rebuilt before animating
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() {
-        _showProfileCard = true; // Use unified inline card for all stars
+      _spinController.forward(from: 0).whenComplete(() {
+        if (!mounted) return;
+        setState(() {
+          _showProfileCard = true; // Use unified inline card for all stars
+        });
       });
     });
   }
@@ -438,13 +443,28 @@ class _StarMapPageState extends State<StarMapPage>
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .secondaryContainer,
                       borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: Theme.of(context).brightness == Brightness.dark
+                                ? 0.45
+                                : 0.15,
+                          ),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.filter_list_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSecondaryContainer,
                       ),
                       onPressed: () {
                         setState(() => _showFilter = !_showFilter);
@@ -456,7 +476,30 @@ class _StarMapPageState extends State<StarMapPage>
                     Container(
                       width: 240,
                       padding: const EdgeInsets.all(16),
-                      decoration: AsteriaTheme.elevatedCardDecoration(),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius:
+                            BorderRadius.circular(AsteriaTheme.radiusMedium),
+                        border: Border.all(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant
+                              .withValues(alpha: 0.5),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: Theme.of(context).brightness == Brightness.dark
+                                  ? 0.35
+                                  : 0.1,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -465,27 +508,59 @@ class _StarMapPageState extends State<StarMapPage>
                             'Radius',
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          Slider(
-                            value: _radiusThreshold,
-                            min: 80,
-                            max: 420,
-                            onChanged: (v) => setState(() {
-                              _radiusThreshold = v;
-                            }),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor:
+                                  Theme.of(context).colorScheme.primary,
+                              inactiveTrackColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.25),
+                              thumbColor:
+                                  Theme.of(context).colorScheme.primary,
+                              overlayColor: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.12),
+                            ),
+                            child: Slider(
+                              value: _radiusThreshold,
+                              min: 80,
+                              max: 420,
+                              onChanged: (v) => setState(() {
+                                _radiusThreshold = v;
+                              }),
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Similarity',
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          Slider(
-                            value: _similarityMin,
-                            min: 0.0,
-                            max: 1.0,
-                            divisions: 20,
-                            onChanged: (v) => setState(() {
-                              _similarityMin = v;
-                            }),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor:
+                                  Theme.of(context).colorScheme.primary,
+                              inactiveTrackColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.25),
+                              thumbColor:
+                                  Theme.of(context).colorScheme.primary,
+                              overlayColor: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.12),
+                            ),
+                            child: Slider(
+                              value: _similarityMin,
+                              min: 0.0,
+                              max: 1.0,
+                              divisions: 20,
+                              onChanged: (v) => setState(() {
+                                _similarityMin = v;
+                              }),
+                            ),
                           ),
                         ],
                       ),
