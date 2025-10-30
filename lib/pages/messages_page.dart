@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import 'thread_page.dart';
+import '../services/friend_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/chat_service.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -14,15 +18,7 @@ class _MessagesPageState extends State<MessagesPage>
   late final Animation<double> _fadeAnim;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<_Conversation> _conversations = const [
-    _Conversation(
-      name: 'TechReviewer',
-      message: 'Hey! Just watched your latest video 🎥',
-      time: '2m ago',
-      avatarEmoji: '🧑🏻‍🦲',
-      unread: true,
-    ),
-  ];
+  List<ConversationSummary> _conversations = const [];
 
   @override
   void initState() {
@@ -35,6 +31,26 @@ class _MessagesPageState extends State<MessagesPage>
       parent: _fade,
       curve: AsteriaTheme.curveElegant,
     );
+    _loadConversations();
+    // Realtime: listen to new messages in any conversation the user is part of
+    Supabase.instance.client
+        .channel('messages-changes')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (_) => _loadConversations(),
+        )
+        .subscribe();
+  }
+  Future<void> _loadConversations() async {
+    try {
+      final data = await ChatService.fetchConversations();
+      if (!mounted) return;
+      setState(() => _conversations = data);
+    } catch (_) {
+      // ignore errors for now
+    }
   }
 
   @override
@@ -76,13 +92,23 @@ class _MessagesPageState extends State<MessagesPage>
                     : const Color(0xFFE0E0E0),
               ),
               Expanded(
-                child: ListView.builder(
-                  itemCount: _conversations.length,
-                  itemBuilder: (context, index) {
-                    final convo = _conversations[index];
-                    return _ConversationTile(conversation: convo);
-                  },
-                ),
+                child: _conversations.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No messages yet — start a conversation from the Star Map',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: AsteriaTheme.textSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _conversations.length,
+                        itemBuilder: (context, index) {
+                          final convo = _conversations[index];
+                          return _ConversationTile(conversation: convo);
+                        },
+                      ),
               ),
             ],
           ),
@@ -148,19 +174,87 @@ class _MessagesPageState extends State<MessagesPage>
         border: Border.all(color: border, width: 1),
       ),
       child: IconButton(
-        icon: const Icon(Icons.edit_outlined, size: 22),
+        icon: const Icon(Icons.group_add_rounded, size: 22),
         color: const Color(0xFFA0522D),
-        onPressed: () {},
+        onPressed: () => _showFriendRequestsModal(context),
         padding: const EdgeInsets.all(10),
         constraints: const BoxConstraints(),
-        tooltip: 'New message',
+        tooltip: 'Friend requests',
       ),
+    );
+  }
+
+  void _showFriendRequestsModal(BuildContext context) async {
+    final requests = await FriendService.incomingPending();
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        if (requests.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                'No friend requests right now',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemBuilder: (ctx, i) {
+            final r = requests[i];
+            return Row(
+              children: [
+                const CircleAvatar(child: Icon(Icons.person)),
+                const SizedBox(width: 12),
+                Expanded(child: Text('New request from ${r.senderId.substring(0, 6)}…')),
+                TextButton(
+                  onPressed: () async {
+                    final cid = await FriendService.accept(r.id, r.senderId);
+                    if (!ctx.mounted) return;
+                    Navigator.of(ctx).pop();
+                    if (cid != null && mounted) {
+                      Navigator.of(this.context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ThreadPage(
+                            conversationId: cid,
+                            title: 'New chat',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Accept'),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () async {
+                    await FriendService.decline(r.id);
+                    if (!ctx.mounted) return;
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text('Decline'),
+                ),
+              ],
+            );
+          },
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemCount: requests.length,
+        );
+      },
     );
   }
 }
 
 class _ConversationTile extends StatelessWidget {
-  final _Conversation conversation;
+  final ConversationSummary conversation;
   const _ConversationTile({required this.conversation});
 
   @override
@@ -168,7 +262,16 @@ class _ConversationTile extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      onTap: () {},
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ThreadPage(
+              conversationId: conversation.conversationId,
+              title: conversation.otherName,
+            ),
+          ),
+        );
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AsteriaTheme.spacingLarge,
@@ -185,10 +288,14 @@ class _ConversationTile extends StatelessWidget {
                   backgroundColor: isDark
                       ? const Color(0xFF2A2A2A)
                       : const Color(0xFFE8E4DE),
-                  child: Text(
-                    conversation.avatarEmoji,
-                    style: const TextStyle(fontSize: 26),
-                  ),
+                  backgroundImage: (conversation.otherAvatarUrl != null &&
+                          conversation.otherAvatarUrl!.isNotEmpty)
+                      ? NetworkImage(conversation.otherAvatarUrl!)
+                      : null,
+                  child: (conversation.otherAvatarUrl == null ||
+                          conversation.otherAvatarUrl!.isEmpty)
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
                 ),
                 if (conversation.unread)
                   Positioned(
@@ -220,7 +327,7 @@ class _ConversationTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.name,
+                          conversation.otherName,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -232,7 +339,7 @@ class _ConversationTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        conversation.time,
+                        _formatTime(conversation.lastAt),
                         style: TextStyle(
                           fontSize: 14,
                           color: AsteriaTheme.textSecondary,
@@ -243,7 +350,7 @@ class _ConversationTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    conversation.message,
+                    conversation.lastMessage,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -260,19 +367,13 @@ class _ConversationTile extends StatelessWidget {
       ),
     );
   }
+  String _formatTime(DateTime t) {
+    final now = DateTime.now();
+    final d = now.difference(t);
+    if (d.inMinutes < 1) return 'now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    return '${t.month}/${t.day}';
+  }
 }
 
-class _Conversation {
-  final String name;
-  final String message;
-  final String time;
-  final String avatarEmoji;
-  final bool unread;
-  const _Conversation({
-    required this.name,
-    required this.message,
-    required this.time,
-    required this.avatarEmoji,
-    this.unread = false,
-  });
-}

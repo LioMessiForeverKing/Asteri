@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/profile_service.dart';
 import '../services/match_service.dart';
 import '../models/match_candidate.dart';
+import '../services/friend_service.dart';
 
 class StarMapPage extends StatefulWidget {
   const StarMapPage({super.key});
@@ -799,14 +800,28 @@ class _StarMapPageState extends State<StarMapPage>
               const SizedBox(height: AsteriaTheme.spacingLarge),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Placeholder: navigate to a profile view when available
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profile view coming soon')),
-                    );
-                  },
-                  child: const Text('View Profile'),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await FriendService.sendRequest(_selectedStar!.id);
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Friend request sent')),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed: $e')),
+                            );
+                          }
+                        },
+                        child: const Text('Add Friend'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
