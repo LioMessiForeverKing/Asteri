@@ -6,7 +6,7 @@ import 'pages/auth_gate.dart';
 import 'utils/constants.dart';
 import 'theme.dart';
 import 'services/push_service.dart';
-import 'services/location_service.dart';
+// import 'services/location_service.dart'; // Location disabled for privacy
 import 'services/theme_controller.dart';
 
 Future<void> main() async {
@@ -35,7 +35,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     ThemeController.instance.addListener(_onThemeChanged);
     // Best-effort location refresh on app start
     // Non-blocking, internally rate-limited
-    unawaited(LocationService.maybeUpdateLocation());
+    // unawaited(LocationService.maybeUpdateLocation()); // Location disabled for privacy
   }
 
   @override
@@ -51,7 +51,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Refresh location when app becomes active, rate-limited inside service
-      unawaited(LocationService.maybeUpdateLocation());
+      // unawaited(LocationService.maybeUpdateLocation()); // Location disabled for privacy
     }
   }
 
