@@ -6,6 +6,8 @@ import 'package:vector_math/vector_math_64.dart' as vm;
 import '../theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/profile_service.dart';
+import '../services/match_service.dart';
+import '../models/match_candidate.dart';
 
 class StarMapPage extends StatefulWidget {
   const StarMapPage({super.key});
@@ -23,7 +25,7 @@ class _StarMapPageState extends State<StarMapPage>
   late Animation<double> _pulseAnimation;
   late Animation<double> _spinAnimation;
 
-  // Hardcoded stars data
+  // Star nodes; start with current user, others populated from MatchService
   final List<StarData> _stars = [
     StarData(
       id: 'you',
@@ -31,170 +33,12 @@ class _StarMapPageState extends State<StarMapPage>
       x: 0.5,
       y: 0.5,
       isCurrentUser: true,
-      interests: ['Music', 'Technology', 'Art'],
+      interests: const [],
+      sharedInterests: const [],
       similarity: 1.0,
-      avatarUrl: 'https://i.pravatar.cc/150?img=1',
-    ),
-    StarData(
-      id: 'star1',
-      name: 'Alex',
-      x: 0.3,
-      y: 0.4,
-      isCurrentUser: false,
-      interests: ['Music', 'Gaming', 'Photography'],
-      similarity: 0.85,
-      avatarUrl: 'https://i.pravatar.cc/150?img=2',
-    ),
-    StarData(
-      id: 'star2',
-      name: 'Sam',
-      x: 0.7,
-      y: 0.3,
-      isCurrentUser: false,
-      interests: ['Technology', 'Science', 'Books'],
-      similarity: 0.78,
-      avatarUrl: 'https://i.pravatar.cc/150?img=3',
-    ),
-    StarData(
-      id: 'star3',
-      name: 'Jordan',
-      x: 0.2,
-      y: 0.7,
-      isCurrentUser: false,
-      interests: ['Art', 'Design', 'Music'],
-      similarity: 0.92,
-      avatarUrl: 'https://i.pravatar.cc/150?img=4',
-    ),
-    StarData(
-      id: 'star4',
-      name: 'Casey',
-      x: 0.8,
-      y: 0.6,
-      isCurrentUser: false,
-      interests: ['Sports', 'Fitness', 'Travel'],
-      similarity: 0.45,
-      avatarUrl: 'https://i.pravatar.cc/150?img=5',
-    ),
-    StarData(
-      id: 'star5',
-      name: 'Riley',
-      x: 0.4,
-      y: 0.2,
-      isCurrentUser: false,
-      interests: ['Music', 'Movies', 'Cooking'],
-      similarity: 0.67,
-      avatarUrl: 'https://i.pravatar.cc/150?img=6',
-    ),
-    StarData(
-      id: 'star6',
-      name: 'Morgan',
-      x: 0.6,
-      y: 0.8,
-      isCurrentUser: false,
-      interests: ['Technology', 'Gaming', 'Music'],
-      similarity: 0.73,
-      avatarUrl: 'https://i.pravatar.cc/150?img=7',
-    ),
-    StarData(
-      id: 'star7',
-      name: 'Taylor',
-      x: 0.1,
-      y: 0.5,
-      isCurrentUser: false,
-      interests: ['Art', 'Photography', 'Travel'],
-      similarity: 0.58,
-      avatarUrl: 'https://i.pravatar.cc/150?img=8',
-    ),
-    StarData(
-      id: 'star8',
-      name: 'Avery',
-      x: 0.9,
-      y: 0.4,
-      isCurrentUser: false,
-      interests: ['Science', 'Books', 'Technology'],
-      similarity: 0.69,
-      avatarUrl: 'https://i.pravatar.cc/150?img=9',
-    ),
-    // Additional stars for scrollable map
-    StarData(
-      id: 'star9',
-      name: 'Blake',
-      x: 0.15,
-      y: 0.2,
-      isCurrentUser: false,
-      interests: ['Design', 'Art', 'Fashion'],
-      similarity: 0.76,
-      avatarUrl: 'https://i.pravatar.cc/150?img=10',
-    ),
-    StarData(
-      id: 'star10',
-      name: 'Cameron',
-      x: 0.85,
-      y: 0.8,
-      isCurrentUser: false,
-      interests: ['Science', 'Technology', 'Innovation'],
-      similarity: 0.82,
-      avatarUrl: 'https://i.pravatar.cc/150?img=11',
-    ),
-    StarData(
-      id: 'star11',
-      name: 'Drew',
-      x: 0.1,
-      y: 0.8,
-      isCurrentUser: false,
-      interests: ['Music', 'Writing', 'Poetry'],
-      similarity: 0.64,
-      avatarUrl: 'https://i.pravatar.cc/150?img=12',
-    ),
-    StarData(
-      id: 'star12',
-      name: 'Emery',
-      x: 0.9,
-      y: 0.2,
-      isCurrentUser: false,
-      interests: ['Business', 'Finance', 'Leadership'],
-      similarity: 0.38,
-      avatarUrl: 'https://i.pravatar.cc/150?img=13',
-    ),
-    StarData(
-      id: 'star13',
-      name: 'Finley',
-      x: 0.25,
-      y: 0.9,
-      isCurrentUser: false,
-      interests: ['Nature', 'Hiking', 'Photography'],
-      similarity: 0.71,
-      avatarUrl: 'https://i.pravatar.cc/150?img=14',
-    ),
-    StarData(
-      id: 'star14',
-      name: 'Gray',
-      x: 0.75,
-      y: 0.1,
-      isCurrentUser: false,
-      interests: ['Gaming', 'Streaming', 'Entertainment'],
-      similarity: 0.55,
-      avatarUrl: 'https://i.pravatar.cc/150?img=15',
-    ),
-    StarData(
-      id: 'star15',
-      name: 'Harper',
-      x: 0.05,
-      y: 0.3,
-      isCurrentUser: false,
-      interests: ['Education', 'Teaching', 'Learning'],
-      similarity: 0.61,
-      avatarUrl: 'https://i.pravatar.cc/150?img=16',
-    ),
-    StarData(
-      id: 'star16',
-      name: 'Indigo',
-      x: 0.95,
-      y: 0.7,
-      isCurrentUser: false,
-      interests: ['Fashion', 'Beauty', 'Lifestyle'],
-      similarity: 0.43,
-      avatarUrl: 'https://i.pravatar.cc/150?img=17',
+      avatarUrl: null,
+      percent: 100,
+      stars: 5,
     ),
   ];
 
@@ -209,6 +53,8 @@ class _StarMapPageState extends State<StarMapPage>
   // Current user's visual settings
   Color _userStarColor = AsteriaTheme.accentColor;
   RealtimeChannel? _profileChannel;
+  bool _loading = false;
+  String? _error;
 
   // Zoom and pan state (InteractiveViewer)
   late TransformationController _transformController;
@@ -249,6 +95,13 @@ class _StarMapPageState extends State<StarMapPage>
     );
 
     _loadCurrentUserProfile();
+    _loadMatches();
+
+    // Center the viewport on the current user's star after first layout
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _centerOnCurrentUser();
+    });
   }
 
   @override
@@ -287,9 +140,12 @@ class _StarMapPageState extends State<StarMapPage>
           x: _stars[0].x,
           y: _stars[0].y,
           isCurrentUser: true,
-          interests: _stars[0].interests,
+          interests: const [],
+          sharedInterests: const [],
           similarity: 1.0,
           avatarUrl: avatarUrl ?? _stars[0].avatarUrl,
+          percent: 100,
+          stars: 5,
         );
       }
 
@@ -333,9 +189,12 @@ class _StarMapPageState extends State<StarMapPage>
                     x: _stars[0].x,
                     y: _stars[0].y,
                     isCurrentUser: true,
-                    interests: _stars[0].interests,
+                    interests: const [],
+                    sharedInterests: const [],
                     similarity: 1.0,
                     avatarUrl: newAvatarUrl ?? _stars[0].avatarUrl,
+                    percent: 100,
+                    stars: 5,
                   );
                 }
               });
@@ -374,6 +233,65 @@ class _StarMapPageState extends State<StarMapPage>
     return Color(0xFF000000 | intColor);
   }
 
+  Future<void> _loadMatches() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final List<MatchCandidate> matches = await MatchService.fetchMatches(limit: 20);
+
+      // Arrange around center using golden angle
+      const double rMin = 0.18; // closer = more similar
+      const double rMax = 0.48;
+      const double goldenAngleDeg = 137.508;
+
+      final List<StarData> nodes = [_stars.first];
+      for (int i = 0; i < matches.length; i++) {
+        final m = matches[i];
+        final sim = ((m.scorePercent - 10) / 90).clamp(0.0, 1.0);
+        final double radius = rMin + (1.0 - sim) * (rMax - rMin);
+        final double theta = (goldenAngleDeg * i) * (math.pi / 180.0);
+        double x = 0.5 + radius * math.cos(theta);
+        double y = 0.5 + radius * math.sin(theta);
+        x = x.clamp(0.06, 0.94);
+        y = y.clamp(0.06, 0.94);
+
+        nodes.add(
+          StarData(
+            id: m.userId,
+            name: m.fullName.isNotEmpty ? m.fullName : 'User',
+            x: x,
+            y: y,
+            isCurrentUser: false,
+            interests: m.interests,
+            sharedInterests: m.sharedInterests,
+            similarity: sim,
+            avatarUrl: m.avatarUrl,
+            percent: m.scorePercent,
+            stars: m.stars,
+          ),
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _stars
+          ..clear()
+          ..addAll(nodes);
+        _loading = false;
+      });
+      // Re-center once matches are loaded (keeps your star centered)
+      _centerOnCurrentUser();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
   void _onStarTap(StarData star) {
     _spinController.stop();
 
@@ -407,6 +325,22 @@ class _StarMapPageState extends State<StarMapPage>
     });
   }
 
+  void _centerOnCurrentUser() {
+    if (!mounted) return;
+    final Size screenSize = MediaQuery.of(context).size;
+    final double mapWidth = screenSize.width * 2;
+    final double mapHeight = screenSize.height * 2;
+    // Current user star is always first
+    if (_stars.isEmpty) return;
+    final StarData me = _stars.first;
+    final double x = me.x * mapWidth;
+    final double y = me.y * mapHeight;
+    final double dx = (screenSize.width / 2) - x;
+    final double dy = (screenSize.height / 2) - y;
+    _transformController.value = Matrix4.identity()
+      ..translateByVector3(vm.Vector3(dx, dy, 0.0));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -432,6 +366,95 @@ class _StarMapPageState extends State<StarMapPage>
 
           // Profile card for current user (non-modal)
           if (_showProfileCard && _selectedStar != null) _buildProfileCard(),
+
+          if (_loading)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AsteriaTheme.radiusMedium),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    'Loading matches...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          if (_error != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AsteriaTheme.radiusMedium),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    'Error loading matches: $_error',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          if (!_loading && _error == null && _stars.length <= 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AsteriaTheme.radiusMedium),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    'No users yet — we’ll show people similar to you as they join :)',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                  ),
+                ),
+              ),
+            ),
 
           // Top-right filter button and panel
           Positioned(
@@ -724,7 +747,7 @@ class _StarMapPageState extends State<StarMapPage>
                   ),
                   const SizedBox(width: AsteriaTheme.spacingSmall),
                   Text(
-                    'Interests:',
+                    'Shared interests:',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AsteriaTheme.textSecondary,
                     ),
@@ -735,7 +758,9 @@ class _StarMapPageState extends State<StarMapPage>
               Wrap(
                 spacing: AsteriaTheme.spacingSmall,
                 runSpacing: AsteriaTheme.spacingSmall,
-                children: _selectedStar!.interests
+                children: (_selectedStar!.sharedInterests.isNotEmpty
+                        ? _selectedStar!.sharedInterests
+                        : _selectedStar!.interests)
                     .map(
                       (interest) => Container(
                         padding: const EdgeInsets.symmetric(
@@ -755,6 +780,34 @@ class _StarMapPageState extends State<StarMapPage>
                       ),
                     )
                     .toList(),
+              ),
+              const SizedBox(height: AsteriaTheme.spacingMedium),
+              Row(
+                children: [
+                  for (int i = 0; i < _selectedStar!.stars; i++)
+                    const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                  for (int i = _selectedStar!.stars; i < 5; i++)
+                    Icon(
+                      Icons.star_border_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  const SizedBox(width: 8),
+                  Text('${_selectedStar!.percent}% match'),
+                ],
+              ),
+              const SizedBox(height: AsteriaTheme.spacingLarge),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Placeholder: navigate to a profile view when available
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile view coming soon')),
+                    );
+                  },
+                  child: const Text('View Profile'),
+                ),
               ),
             ],
           ),
@@ -829,8 +882,11 @@ class StarData {
   final double y;
   final bool isCurrentUser;
   final List<String> interests;
+  final List<String> sharedInterests;
   final double similarity;
   final String? avatarUrl;
+  final int percent;
+  final int stars;
 
   StarData({
     required this.id,
@@ -839,8 +895,11 @@ class StarData {
     required this.y,
     required this.isCurrentUser,
     required this.interests,
+    required this.sharedInterests,
     required this.similarity,
     this.avatarUrl,
+    required this.percent,
+    required this.stars,
   });
 }
 

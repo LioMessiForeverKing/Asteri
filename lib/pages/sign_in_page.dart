@@ -102,7 +102,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -164,7 +164,7 @@ class _SignInPageState extends State<SignInPage> with TickerProviderStateMixin {
                                           1.0,
                                         ],
                                         colors: const [
-                                          Colors.white,
+                                          Colors.white, // mask color (kept white for reveal)
                                           Colors.white,
                                           Colors.transparent,
                                           Colors.transparent,

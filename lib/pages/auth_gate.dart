@@ -62,8 +62,9 @@ class AuthGate extends StatelessWidget {
           builder: (context, loadingSnapshot) {
             if (loadingSnapshot.connectionState == ConnectionState.waiting) {
               // Still checking, show a simple loading indicator
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              return Scaffold(
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                body: const Center(child: CircularProgressIndicator()),
               );
             }
 
@@ -77,8 +78,10 @@ class AuthGate extends StatelessWidget {
               future: ProfileService.isProfileComplete(session.user.id),
               builder: (context, profileSnap) {
                 if (profileSnap.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
+                  return Scaffold(
+                    backgroundColor:
+                        Theme.of(context).scaffoldBackgroundColor,
+                    body: const Center(child: CircularProgressIndicator()),
                   );
                 }
                 final isProfileComplete = profileSnap.data ?? false;

@@ -219,7 +219,7 @@ class _LoadingPageState extends State<LoadingPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AsteriaTheme.backgroundPrimary,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -235,7 +235,9 @@ class _LoadingPageState extends State<LoadingPage>
                       // Asteria animated logo
                       AsteriaLoadingAnimation(
                         size: 96,
-                        color: AsteriaTheme.textPrimary,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AsteriaTheme.accentColor
+                            : AsteriaTheme.primaryColor,
                       ),
                       const SizedBox(height: AsteriaTheme.spacingLarge),
                       // Dynamic status text

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme.dart';
+import '../widgets/passion_graph.dart';
+import '../models/passion_graph.dart';
+import '../services/youtube_service.dart';
+import '../services/openai_service.dart';
+import 'dart:math' as math;
 import '../services/theme_controller.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
@@ -28,13 +34,57 @@ class ProfilePage extends StatelessWidget {
     return Color(0xFF000000 | intColor);
   }
 
+  Future<GraphSnapshot> _loadGraph() async {
+    final subs = await YouTubeService.fetchAllSubscriptions(pageSize: 50);
+    final likes = await YouTubeService.fetchAllLikedVideos(
+      pageSize: 50,
+      maxItems: 100,
+    );
+    GraphSnapshot snapshot = await OpenAIService.summarizePassions(
+      subscriptions: subs,
+      likedVideos: likes,
+    );
+    return _dedupeGraph(snapshot);
+  }
+
+  GraphSnapshot _dedupeGraph(GraphSnapshot snapshot) {
+    final Map<String, PassionNode> byLabel = <String, PassionNode>{};
+    for (final node in snapshot.nodes) {
+      final String key = node.label.trim().toLowerCase();
+      final PassionNode? existing = byLabel[key];
+      if (existing == null || node.weight > existing.weight) {
+        byLabel[key] = node;
+      }
+    }
+    // Keep strongest topics first and cap to a reasonable count for clarity
+    final List<PassionNode> nodes = byLabel.values.toList()
+      ..sort((a, b) => b.weight.compareTo(a.weight));
+    if (nodes.length > 24) nodes.removeRange(24, nodes.length);
+    final Set<String> validIds = nodes.map((n) => n.id).toSet();
+    final List<GraphEdge> edges = snapshot.edges
+        .where(
+          (e) =>
+              validIds.contains(e.sourceId) &&
+              validIds.contains(e.targetId) &&
+              e.sourceId != e.targetId,
+        )
+        .toList();
+    // Seed a clean circular layout if nodes are unpositioned
+    final int n = nodes.length;
+    if (n > 0) {
+      for (int i = 0; i < n; i++) {
+        final double angle = (i / n) * 6.28318530718; // 2*pi
+        final double radius = 120 + 40 * nodes[i].weight; // emphasize strong nodes
+        nodes[i].x = radius * math.cos(angle);
+        nodes[i].y = radius * math.sin(angle);
+      }
+    }
+    return GraphSnapshot(nodes: nodes, edges: edges);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final interests = const [
-      _Interest(name: 'Technology', emoji: '💻'),
-      _Interest(name: 'Gaming', emoji: '🎮'),
-      _Interest(name: 'Music', emoji: '🎵'),
-    ];
+    // Interests list removed; we now show the interactive interest graph instead
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -82,10 +132,17 @@ class ProfilePage extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              child: Icon(
-                                Icons.star_rounded,
-                                color: starColor,
-                                size: 26,
+                              child: Center(
+                                child: SvgPicture.asset(
+                                  'assets/Logos/star.svg',
+                                  width: 22,
+                                  height: 22,
+                                  fit: BoxFit.contain,
+                                  colorFilter: ColorFilter.mode(
+                                    starColor,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -114,22 +171,6 @@ class ProfilePage extends StatelessWidget {
                       ),
 
                       const SizedBox(height: AsteriaTheme.spacingLarge),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AsteriaTheme.spacingLarge,
-                        ),
-                        child: Text(
-                          'Passionate about Technology and Gaming!',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                      ),
-
-                      const SizedBox(height: AsteriaTheme.spacingLarge),
                       Divider(
                         height: 1,
                         color: Theme.of(context)
@@ -139,13 +180,12 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(height: AsteriaTheme.spacingLarge),
 
-                      // Section header
+                      // Interest Graph section
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'INTERESTS',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
+                          'YOUR INTEREST GRAPH',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant,
@@ -156,20 +196,35 @@ class ProfilePage extends StatelessWidget {
 
                       const SizedBox(height: AsteriaTheme.spacingMedium),
 
-                      SizedBox(
-                        height: 260,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: interests.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: AsteriaTheme.spacingLarge),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AsteriaTheme.spacingLarge,
+                      Container(
+                        height: 360,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: FutureBuilder<GraphSnapshot>(
+                            future: _loadGraph(),
+                            builder: (context, graphSnap) {
+                              if (graphSnap.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              final snap = graphSnap.data;
+                              if (snap == null || snap.nodes.isEmpty) {
+                                return Center(
+                                  child: Text(
+                                    'We\'ll show your interest graph here',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                );
+                              }
+                              return PassionGraph(snapshot: snap);
+                            },
                           ),
-                          itemBuilder: (context, i) {
-                            final it = interests[i];
-                            return _interestCard(context, it);
-                          },
                         ),
                       ),
                     ],
@@ -204,33 +259,7 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  static Widget _interestCard(BuildContext context, _Interest interest) {
-    return Container(
-      width: 220,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.all(AsteriaTheme.spacingXLarge),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(interest.emoji, style: const TextStyle(fontSize: 48)),
-          const SizedBox(height: AsteriaTheme.spacingXLarge),
-          Text(
-            interest.name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
+  // Old interests list UI removed
 }
 
 void _showSettingsDialog(BuildContext context) {
@@ -559,8 +588,4 @@ void _showSettingsDialog(BuildContext context) {
   );
 }
 
-class _Interest {
-  final String name;
-  final String emoji;
-  const _Interest({required this.name, required this.emoji});
-}
+// Removed legacy _Interest model

@@ -12,17 +12,14 @@ class PassionGraphPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AsteriaTheme.backgroundPrimary,
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
           children: [
             // Graph canvas
             Padding(
               padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-              child: Container(
-                decoration: AsteriaTheme.cleanCardDecoration(),
-                child: PassionGraph(snapshot: snapshot),
-              ),
+              child: PassionGraph(snapshot: snapshot),
             ),
 
             // Bottom overlay with continue button
@@ -30,25 +27,23 @@ class PassionGraphPage extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                child: Container(
-                  decoration: AsteriaTheme.cleanCardDecoration(),
-                  padding: const EdgeInsets.all(AsteriaTheme.spacingLarge),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Continue to Star Map',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AsteriaTheme.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Continue to Star Map',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: AsteriaTheme.spacingLarge),
-                      SizedBox(
-                        width: 220,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () {
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AsteriaTheme.spacingLarge),
+                    SizedBox(
+                      width: 260,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
                             // Prepare top interests from snapshot
                             final nodes = List.of(snapshot.nodes);
                             nodes.sort((a, b) => b.weight.compareTo(a.weight));
@@ -78,8 +73,9 @@ class PassionGraphPage extends StatelessWidget {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AsteriaTheme.secondaryColor,
-                            foregroundColor: AsteriaTheme.accentColor,
+                            backgroundColor: AsteriaTheme.accentColor,
+                            foregroundColor: Colors.black,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
                                 AsteriaTheme.radiusXLarge,
@@ -89,8 +85,7 @@ class PassionGraphPage extends StatelessWidget {
                           child: const Text('Continue'),
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ),

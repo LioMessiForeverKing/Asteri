@@ -8,8 +8,13 @@ class PassionGraph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return CustomPaint(
-      painter: _GraphPainter(nodes: snapshot.nodes, edges: snapshot.edges),
+      painter: _GraphPainter(
+        nodes: snapshot.nodes,
+        edges: snapshot.edges,
+        isDark: isDark,
+      ),
       child: const SizedBox.expand(),
     );
   }
@@ -18,15 +23,18 @@ class PassionGraph extends StatelessWidget {
 class _GraphPainter extends CustomPainter {
   final List<PassionNode> nodes;
   final List<GraphEdge> edges;
+  final bool isDark;
 
-  _GraphPainter({required this.nodes, required this.edges});
+  _GraphPainter({required this.nodes, required this.edges, required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
     final Offset center = size.center(Offset.zero);
-    // white background grid
-    final Paint grid = Paint()..color = const Color(0xFFFAFAFA);
-    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    // Subtle grid overlay; no background fill so it blends with page/theme
+    final Color gridColor = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : const Color(0xFFEEEEEE);
+    final Paint grid = Paint()..color = gridColor..strokeWidth = 1.0;
     for (double x = 0; x < size.width; x += 24) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
@@ -43,8 +51,8 @@ class _GraphPainter extends CustomPainter {
       final b = nodes.firstWhere((n) => n.id == e.targetId);
       final p1 = center + Offset(a.x, a.y);
       final p2 = center + Offset(b.x, b.y);
-      edgePaint.color = Colors.black.withValues(
-        alpha: (0.10 + 0.25 * e.weight),
+      edgePaint.color = (isDark ? Colors.white : Colors.black).withValues(
+        alpha: (isDark ? 0.10 : 0.10) + 0.25 * e.weight,
       );
       edgePaint.strokeWidth = 0.5 + 1.6 * e.weight;
       final mid = Offset(
@@ -65,8 +73,8 @@ class _GraphPainter extends CustomPainter {
       final Color color = HSLColor.fromAHSL(
         1,
         (n.colorSeed % 360).toDouble(),
-        0.45,
-        0.58,
+        isDark ? 0.55 : 0.45, // a touch more saturated on dark
+        isDark ? 0.64 : 0.58, // slightly brighter on dark
       ).toColor();
 
       // glow
@@ -83,8 +91,8 @@ class _GraphPainter extends CustomPainter {
       final TextPainter tp = TextPainter(
         text: TextSpan(
           text: n.label,
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -107,7 +115,9 @@ class _GraphPainter extends CustomPainter {
         const Radius.circular(8),
       );
       final Paint pillPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.9)
+        ..color = (isDark
+                ? Colors.black.withValues(alpha: 0.65)
+                : Colors.white.withValues(alpha: 0.9))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0);
       canvas.drawRRect(pill, pillPaint);
 
