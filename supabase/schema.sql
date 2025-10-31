@@ -158,16 +158,31 @@ alter table public.user_push_tokens enable row level security;
 
 -- Policies: users can manage their own tokens
 drop policy if exists "upsert own token" on public.user_push_tokens;
-create policy "upsert own token" on public.user_push_tokens
-  for insert with check (auth.uid() = user_id);
-
+drop policy if exists "insert own token" on public.user_push_tokens;
+drop policy if exists "update own token" on public.user_push_tokens;
 drop policy if exists "read own tokens" on public.user_push_tokens;
-create policy "read own tokens" on public.user_push_tokens
-  for select using (auth.uid() = user_id);
-
 drop policy if exists "delete own token" on public.user_push_tokens;
+
+-- INSERT policy for upsert
+create policy "insert own token" on public.user_push_tokens
+  for insert 
+  with check (auth.uid() = user_id);
+
+-- UPDATE policy for upsert (required!)
+create policy "update own token" on public.user_push_tokens
+  for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- SELECT policy
+create policy "read own tokens" on public.user_push_tokens
+  for select 
+  using (auth.uid() = user_id);
+
+-- DELETE policy
 create policy "delete own token" on public.user_push_tokens
-  for delete using (auth.uid() = user_id);
+  for delete 
+  using (auth.uid() = user_id);
 
 -- Indexes
 create index if not exists idx_user_push_tokens_user_id on public.user_push_tokens(user_id);
@@ -211,6 +226,35 @@ drop policy if exists "select_own_profile" on public.profiles;
 create policy "select_own_profile"
 on public.profiles for select
 using (auth.uid() = id);
+
+-- Allow users to read profiles of their friends (accepted friend requests)
+drop policy if exists "select_friend_profiles" on public.profiles;
+create policy "select_friend_profiles"
+on public.profiles for select
+using (
+  exists (
+    select 1 from public.friend_requests fr
+    where fr.status = 'accepted'
+      and (
+        (fr.sender_id = auth.uid() and fr.receiver_id = profiles.id)
+        or
+        (fr.receiver_id = auth.uid() and fr.sender_id = profiles.id)
+      )
+  )
+);
+
+-- Allow users to read profiles of users who sent them pending friend requests
+drop policy if exists "select_pending_request_profiles" on public.profiles;
+create policy "select_pending_request_profiles"
+on public.profiles for select
+using (
+  exists (
+    select 1 from public.friend_requests fr
+    where fr.status = 'pending'
+      and fr.receiver_id = auth.uid()
+      and fr.sender_id = profiles.id
+  )
+);
 
 -- Allow each user to insert their own profile
 drop policy if exists "insert_own_profile" on public.profiles;
@@ -268,6 +312,49 @@ using (
 );
 
 -- ================================
+-- Storage bucket for message images
+-- ================================
+
+-- Create public bucket for message images
+insert into storage.buckets (id, name, public)
+values ('message-images', 'message-images', true)
+on conflict (id) do nothing;
+
+-- Public read from the bucket (anyone in a conversation can see images)
+drop policy if exists "message_images_public_read" on storage.objects;
+create policy "message_images_public_read"
+on storage.objects for select
+using (bucket_id = 'message-images');
+
+-- Allow authenticated users to upload images
+drop policy if exists "message_images_insert_own" on storage.objects;
+create policy "message_images_insert_own"
+on storage.objects for insert
+with check (
+  bucket_id = 'message-images' 
+  and owner = auth.uid()
+);
+
+-- Owners can update their own message images
+drop policy if exists "message_images_update_own" on storage.objects;
+create policy "message_images_update_own"
+on storage.objects for update
+using (
+  bucket_id = 'message-images' and owner = auth.uid()
+)
+with check (
+  bucket_id = 'message-images' and owner = auth.uid()
+);
+
+-- Owners can delete their own message images
+drop policy if exists "message_images_delete_own" on storage.objects;
+create policy "message_images_delete_own"
+on storage.objects for delete
+using (
+  bucket_id = 'message-images' and owner = auth.uid()
+);
+
+-- ================================
 -- Messaging (conversations + messages)
 -- ================================
 
@@ -309,10 +396,85 @@ create policy "read own conversations" on public.conversations
     )
   );
 
+-- Allow users to create conversations (they'll add participants immediately after)
+drop policy if exists "create conversations" on public.conversations;
+drop policy if exists "insert conversations" on public.conversations;
+drop policy if exists "users can create conversations" on public.conversations;
+
+-- Create a policy that allows authenticated users to insert conversations
+-- Using 'with check (true)' allows any authenticated user to insert
+-- This matches PostgreSQL RLS best practices for permissive INSERT policies
+create policy "create conversations" on public.conversations
+  for insert 
+  with check (true);
+
+-- SELECT policy: Allow seeing all participants in conversations you're part of
+-- This is needed to find shared conversations between users
+-- Using a security definer function to avoid infinite recursion
+
+-- Create helper function first
+create or replace function public.user_is_participant_in_conversation(conv_id uuid)
+returns boolean
+language plpgsql
+security definer
+stable
+as $$
+begin
+  return exists (
+    select 1 from public.conversation_participants
+    where conversation_id = conv_id
+      and user_id = auth.uid()
+  );
+end;
+$$;
+
+grant execute on function public.user_is_participant_in_conversation(uuid) to authenticated;
+
+-- Drop existing policies
 drop policy if exists "manage participation self" on public.conversation_participants;
-create policy "manage participation self" on public.conversation_participants
-  for all using (user_id = auth.uid())
+drop policy if exists "read participants in own conversations" on public.conversation_participants;
+
+-- Create the SELECT policy
+create policy "read participants in own conversations" on public.conversation_participants
+  for select 
+  using (
+    -- Allow if it's your own participation record
+    user_id = auth.uid()
+    or
+    -- OR allow if you're a participant in this conversation (using security definer function to avoid recursion)
+    public.user_is_participant_in_conversation(conversation_id)
+  );
+
+drop policy if exists "update participation self" on public.conversation_participants;
+create policy "update participation self" on public.conversation_participants
+  for update using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+drop policy if exists "delete participation self" on public.conversation_participants;
+create policy "delete participation self" on public.conversation_participants
+  for delete using (user_id = auth.uid());
+
+-- Allow inserting yourself as a participant
+drop policy if exists "insert participation self" on public.conversation_participants;
+create policy "insert participation self" on public.conversation_participants
+  for insert with check (user_id = auth.uid());
+
+-- Allow users to add friends as participants when creating conversations
+-- This allows inserting the other user as a participant if they're friends
+drop policy if exists "add friend as participant" on public.conversation_participants;
+create policy "add friend as participant" on public.conversation_participants
+  for insert with check (
+    -- Allow if adding a friend (check if there's an accepted friend request)
+    exists (
+      select 1 from public.friend_requests fr
+      where fr.status = 'accepted'
+        and (
+          (fr.sender_id = auth.uid() and fr.receiver_id = user_id)
+          or
+          (fr.receiver_id = auth.uid() and fr.sender_id = user_id)
+        )
+    )
+  );
 
 drop policy if exists "read own messages" on public.messages;
 create policy "read own messages" on public.messages

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/assignment_service.dart';
 import '../theme.dart';
 import 'star_map_page.dart';
@@ -30,11 +29,12 @@ class _AssignmentPageState extends State<AssignmentPage> {
       _applyChange,
     );
     // TEMP: print and copy JWT for testing in Supabase dashboard
-    final token = Supabase.instance.client.auth.currentSession?.accessToken;
-    debugPrint('JWT: $token');
-    if (token != null) {
-      Clipboard.setData(ClipboardData(text: token));
-    }
+    // Commented out for security - JWT tokens contain sensitive user information
+    // final token = Supabase.instance.client.auth.currentSession?.accessToken;
+    // debugPrint('JWT: $token');
+    // if (token != null) {
+    //   Clipboard.setData(ClipboardData(text: token));
+    // }
     final first = await AssignmentService.instance.fetchCurrentTableLabel();
     _setCurrent(first, addHistory: false);
   }

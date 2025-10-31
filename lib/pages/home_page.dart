@@ -173,7 +173,9 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                signedIn ? 'User ID: $_userId' : 'Not signed in',
+                // Commented out for security - user IDs should not be displayed in UI
+                // signedIn ? 'User ID: $_userId' : 'Not signed in',
+                signedIn ? 'Signed in' : 'Not signed in',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),

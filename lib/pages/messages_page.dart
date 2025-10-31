@@ -4,6 +4,7 @@ import 'thread_page.dart';
 import '../services/friend_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/chat_service.dart';
+import '../services/profile_service.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -19,6 +20,8 @@ class _MessagesPageState extends State<MessagesPage>
   final TextEditingController _searchController = TextEditingController();
 
   List<ConversationSummary> _conversations = const [];
+  List<FriendWithProfile> _friends = const [];
+  bool _loading = false;
 
   @override
   void initState() {
@@ -31,7 +34,7 @@ class _MessagesPageState extends State<MessagesPage>
       parent: _fade,
       curve: AsteriaTheme.curveElegant,
     );
-    _loadConversations();
+    _loadData();
     // Realtime: listen to new messages in any conversation the user is part of
     Supabase.instance.client
         .channel('messages-changes')
@@ -39,17 +42,38 @@ class _MessagesPageState extends State<MessagesPage>
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'messages',
-          callback: (_) => _loadConversations(),
+          callback: (_) => _loadData(),
+        )
+        .subscribe();
+    // Also listen to friend request changes
+    Supabase.instance.client
+        .channel('friend-requests-changes')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'friend_requests',
+          callback: (_) => _loadData(),
         )
         .subscribe();
   }
-  Future<void> _loadConversations() async {
+  
+  Future<void> _loadData() async {
+    setState(() => _loading = true);
     try {
-      final data = await ChatService.fetchConversations();
+      final conversations = await ChatService.fetchConversations();
+      final friends = await FriendService.getAllFriends();
       if (!mounted) return;
-      setState(() => _conversations = data);
-    } catch (_) {
-      // ignore errors for now
+      debugPrint('Loaded ${conversations.length} conversations and ${friends.length} friends');
+      setState(() {
+        _conversations = conversations;
+        _friends = friends;
+        _loading = false;
+      });
+    } catch (e) {
+      // Log error for debugging
+      debugPrint('Error loading messages data: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
@@ -92,23 +116,9 @@ class _MessagesPageState extends State<MessagesPage>
                     : const Color(0xFFE0E0E0),
               ),
               Expanded(
-                child: _conversations.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No messages yet — start a conversation from the Star Map',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: AsteriaTheme.textSecondary),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _conversations.length,
-                        itemBuilder: (context, index) {
-                          final convo = _conversations[index];
-                          return _ConversationTile(conversation: convo);
-                        },
-                      ),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildMessagesList(),
               ),
             ],
           ),
@@ -251,6 +261,171 @@ class _MessagesPageState extends State<MessagesPage>
       },
     );
   }
+
+  Widget _buildMessagesList() {
+    // Calculate friends without conversations
+    final conversationUserIds = _conversations.map((c) => c.otherUserId).toSet();
+    final friendsWithoutConversations = _friends
+        .where((friend) => !conversationUserIds.contains(friend.userId))
+        .toList();
+    
+    final totalItems = _conversations.length + friendsWithoutConversations.length;
+    
+    if (totalItems == 0) {
+      return Center(
+        child: Text(
+          'No messages yet — start a conversation with a friend',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: AsteriaTheme.textSecondary),
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      itemCount: totalItems,
+      itemBuilder: (context, index) {
+        // Show conversations first
+        if (index < _conversations.length) {
+          final convo = _conversations[index];
+          return _ConversationTile(conversation: convo);
+        }
+        // Then show friends without conversations
+        final friendIndex = index - _conversations.length;
+        if (friendIndex < friendsWithoutConversations.length) {
+          final friend = friendsWithoutConversations[friendIndex];
+          return _FriendTile(friend: friend);
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _FriendTile extends StatelessWidget {
+  final FriendWithProfile friend;
+  const _FriendTile({required this.friend});
+
+  Future<void> _startConversation(BuildContext context) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final conversationId = await ChatService.startOrGetConversationWith(friend.userId);
+      
+      if (!context.mounted) return;
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+      
+      // Navigate to conversation
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ThreadPage(
+            conversationId: conversationId,
+            title: friend.profile.fullName.isNotEmpty 
+                ? friend.profile.fullName 
+                : 'User',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      
+      // Close loading dialog if still open
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to start conversation: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Get avatar URL (convert storage path if needed)
+    String? avatarUrl;
+    if (friend.profile.avatarUrl != null && friend.profile.avatarUrl!.isNotEmpty) {
+      final avatarPath = friend.profile.avatarUrl!;
+      if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+        avatarUrl = avatarPath;
+      } else {
+        avatarUrl = ProfileService.getPublicAvatarUrl(avatarPath);
+      }
+    }
+
+    return InkWell(
+      onTap: () => _startConversation(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsteriaTheme.spacingLarge,
+          vertical: 14,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: isDark
+                  ? const Color(0xFF2A2A2A)
+                  : const Color(0xFFE8E4DE),
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl == null
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    friend.profile.fullName.isNotEmpty 
+                        ? friend.profile.fullName 
+                        : 'User',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? Colors.white
+                          : AsteriaTheme.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to start a conversation',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AsteriaTheme.textSecondary,
+                      fontFamily: 'Inter',
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chat_bubble_outline,
+              color: AsteriaTheme.textSecondary,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ConversationTile extends StatelessWidget {
@@ -288,10 +463,15 @@ class _ConversationTile extends StatelessWidget {
                   backgroundColor: isDark
                       ? const Color(0xFF2A2A2A)
                       : const Color(0xFFE8E4DE),
-                  backgroundImage: (conversation.otherAvatarUrl != null &&
-                          conversation.otherAvatarUrl!.isNotEmpty)
-                      ? NetworkImage(conversation.otherAvatarUrl!)
-                      : null,
+                  backgroundImage: () {
+                    final avatarUrl = conversation.otherAvatarUrl;
+                    if (avatarUrl == null || avatarUrl.isEmpty) return null;
+                    // Convert storage path to public URL if needed
+                    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+                      return NetworkImage(avatarUrl);
+                    }
+                    return NetworkImage(ProfileService.getPublicAvatarUrl(avatarUrl));
+                  }(),
                   child: (conversation.otherAvatarUrl == null ||
                           conversation.otherAvatarUrl!.isEmpty)
                       ? const Icon(Icons.person, color: Colors.white)

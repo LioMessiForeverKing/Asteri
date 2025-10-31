@@ -41,6 +41,10 @@ class _StarMapPageState extends State<StarMapPage>
       percent: 100,
       stars: 5,
       starColor: AsteriaTheme.accentColor,
+      isFriendRequest: false,
+      friendRequestId: null,
+      isFriend: false,
+      hasPendingRequest: false,
     ),
   ];
 
@@ -147,6 +151,10 @@ class _StarMapPageState extends State<StarMapPage>
           percent: 100,
           stars: 5,
           starColor: color,
+          isFriendRequest: false,
+          friendRequestId: null,
+          isFriend: false,
+          hasPendingRequest: false,
         );
       }
 
@@ -196,6 +204,10 @@ class _StarMapPageState extends State<StarMapPage>
                     percent: 100,
                     stars: 5,
                     starColor: newColor ?? _stars[0].starColor,
+                    isFriendRequest: false,
+                    friendRequestId: null,
+                    isFriend: false,
+                    hasPendingRequest: false,
                   );
                 }
               });
@@ -236,6 +248,9 @@ class _StarMapPageState extends State<StarMapPage>
     });
     try {
       final List<MatchCandidate> matches = await MatchService.fetchMatches(limit: 20);
+      
+      // Also load incoming friend requests
+      final friendRequests = await FriendService.incomingPendingWithProfiles();
 
       // Arrange around center using golden angle
       const double rMin = 0.18; // closer = more similar
@@ -243,15 +258,40 @@ class _StarMapPageState extends State<StarMapPage>
       const double goldenAngleDeg = 137.508;
 
       final List<StarData> nodes = [_stars.first];
+      int index = 0;
+      
+      // Get current user ID for friend status checks
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      
+      // Add regular matches
       for (int i = 0; i < matches.length; i++) {
         final m = matches[i];
         final sim = ((m.scorePercent - 10) / 90).clamp(0.0, 1.0);
         final double radius = rMin + (1.0 - sim) * (rMax - rMin);
-        final double theta = (goldenAngleDeg * i) * (math.pi / 180.0);
+        final double theta = (goldenAngleDeg * index) * (math.pi / 180.0);
         double x = 0.5 + radius * math.cos(theta);
         double y = 0.5 + radius * math.sin(theta);
         x = x.clamp(0.06, 0.94);
         y = y.clamp(0.06, 0.94);
+
+        // Convert avatar storage path to public URL if needed
+        String? avatarUrl;
+        if (m.avatarUrl != null && m.avatarUrl!.isNotEmpty) {
+          if (m.avatarUrl!.startsWith('http://') || m.avatarUrl!.startsWith('https://')) {
+            avatarUrl = m.avatarUrl;
+          } else {
+            avatarUrl = ProfileService.getPublicAvatarUrl(m.avatarUrl!);
+          }
+        }
+
+        // Check friend status
+        bool isFriend = false;
+        bool hasPendingRequest = false;
+        if (currentUserId != null) {
+          isFriend = await FriendService.areFriends(currentUserId, m.userId);
+          final pendingRequest = await FriendService.getPendingRequest(currentUserId, m.userId);
+          hasPendingRequest = pendingRequest != null;
+        }
 
         nodes.add(
           StarData(
@@ -263,12 +303,95 @@ class _StarMapPageState extends State<StarMapPage>
             interests: m.interests,
             sharedInterests: m.sharedInterests,
             similarity: sim,
-            avatarUrl: m.avatarUrl,
+            avatarUrl: avatarUrl,
             percent: m.scorePercent,
             stars: m.stars,
             starColor: _parseHexColor(m.starColor),
+            isFriendRequest: false,
+            friendRequestId: null,
+            isFriend: isFriend,
+            hasPendingRequest: hasPendingRequest,
           ),
         );
+        index++;
+      }
+      
+      // Add friend requests (place them slightly closer to center to make them more visible)
+      for (final fr in friendRequests) {
+        final profile = fr.profile;
+        final matchData = fr.matchData;
+        
+        if (profile == null) continue; // Skip if no profile
+        
+        // Skip if already added as a match
+        if (nodes.any((n) => n.id == fr.request.senderId)) continue;
+        
+        // Use match data if available, otherwise use defaults
+        final int stars = matchData?.stars ?? 3;
+        final List<String> interests = matchData?.interests ?? profile.interests ?? [];
+        final List<String> sharedInterests = matchData?.sharedInterests ?? [];
+        
+        // Handle avatar URL - convert storage paths to public URLs
+        String? avatarUrl;
+        final matchAvatar = matchData?.avatarUrl;
+        if (matchAvatar != null && matchAvatar.isNotEmpty) {
+          // Check if it's already a URL (starts with http) or a storage path
+          if (matchAvatar.startsWith('http://') || matchAvatar.startsWith('https://')) {
+            avatarUrl = matchAvatar;
+          } else {
+            // It's a storage path, convert to public URL
+            avatarUrl = ProfileService.getPublicAvatarUrl(matchAvatar);
+          }
+        } else {
+          final profileAvatar = profile.avatarUrl;
+          if (profileAvatar != null && profileAvatar.isNotEmpty) {
+            avatarUrl = ProfileService.getPublicAvatarUrl(profileAvatar);
+          }
+        }
+        
+        // Place friend requests at a medium radius (more visible than far matches)
+        const double friendRequestRadius = (rMin + rMax) / 2.2;
+        final double theta = (goldenAngleDeg * index) * (math.pi / 180.0);
+        double x = 0.5 + friendRequestRadius * math.cos(theta);
+        double y = 0.5 + friendRequestRadius * math.sin(theta);
+        x = x.clamp(0.06, 0.94);
+        y = y.clamp(0.06, 0.94);
+        
+        // Friend requests are by definition pending, but check if they're actually friends
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        bool isFriend = false;
+        if (currentUserId != null) {
+          isFriend = await FriendService.areFriends(currentUserId, fr.request.senderId);
+        }
+
+        final friendName = profile.fullName.isNotEmpty 
+            ? profile.fullName 
+            : 'User';
+        
+        // Debug: log the name being set
+        // debugPrint('Creating StarData for friend request from ${fr.request.senderId} with name: $friendName');
+        
+        nodes.add(
+          StarData(
+            id: fr.request.senderId,
+            name: friendName,
+            x: x,
+            y: y,
+            isCurrentUser: false,
+            interests: interests,
+            sharedInterests: sharedInterests,
+            similarity: 0.5, // Default similarity for friend requests
+            avatarUrl: avatarUrl,
+            percent: matchData?.scorePercent ?? 50, // Still store percent but won't display it
+            stars: stars,
+            starColor: _parseHexColor(profile.starColor),
+            isFriendRequest: true,
+            friendRequestId: fr.request.id,
+            isFriend: isFriend,
+            hasPendingRequest: true, // It's an incoming request, so pending
+          ),
+        );
+        index++;
       }
 
       if (!mounted) return;
@@ -680,8 +803,164 @@ class _StarMapPageState extends State<StarMapPage>
     );
   }
 
+  Widget _buildActionButton() {
+    if (_selectedStar == null) return const SizedBox.shrink();
+    
+    // If already friends, show "Friends" badge
+    if (_selectedStar!.isFriend) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AsteriaTheme.radiusMedium),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: AsteriaTheme.accentColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Friends',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AsteriaTheme.accentColor,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // If it's an incoming friend request, show Accept/Decline
+    if (_selectedStar!.isFriendRequest) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () async {
+                try {
+                  await FriendService.decline(_selectedStar!.friendRequestId!);
+                  if (!mounted) return;
+                  _closeProfileCard();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Friend request declined')),
+                  );
+                  // Reload to update the feed
+                  _loadMatches();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e')),
+                  );
+                }
+              },
+              child: const Text('Decline'),
+            ),
+          ),
+          const SizedBox(width: AsteriaTheme.spacingMedium),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  final cid = await FriendService.accept(
+                    _selectedStar!.friendRequestId!,
+                    _selectedStar!.id,
+                  );
+                  if (!mounted) return;
+                  _closeProfileCard();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Friend request accepted!')),
+                  );
+                  // Reload to update the feed
+                  _loadMatches();
+                  // Optionally navigate to conversation
+                  if (cid != null) {
+                    // Could navigate to messages page or conversation
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e')),
+                  );
+                }
+              },
+              child: const Text('Accept'),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // If there's a pending request, show "Request Sent"
+    if (_selectedStar!.hasPendingRequest) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AsteriaTheme.radiusMedium),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pending,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Request Sent',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Default: show "Add Friend" button
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () async {
+              try {
+                await FriendService.sendRequest(_selectedStar!.id);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Friend request sent')),
+                );
+                // Reload to update button state
+                _loadMatches();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed: $e')),
+                );
+              }
+            },
+            child: const Text('Add Friend'),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProfileCard() {
     if (_selectedStar == null) return const SizedBox.shrink();
+
+    // Debug: log what we're displaying
+    // debugPrint('Building profile card for star: id=${_selectedStar!.id}, name="${_selectedStar!.name}", isCurrentUser=${_selectedStar!.isCurrentUser}');
+    
+    final displayName = _selectedStar!.name.isNotEmpty 
+        ? _selectedStar!.name 
+        : 'User';
+    
+    // debugPrint('Display name will be: "$displayName"');
 
     return SafeArea(
       child: Align(
@@ -714,10 +993,15 @@ class _StarMapPageState extends State<StarMapPage>
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _selectedStar!.name,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          displayName,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.black87, // Always black for visibility on white/beige card
+                            fontWeight: FontWeight.w600,
+                            fontSize: 20,
+                          ),
                         ),
                         if (_selectedStar!.isCurrentUser)
                           Text(
@@ -789,36 +1073,17 @@ class _StarMapPageState extends State<StarMapPage>
                       size: 18,
                       color: Theme.of(context).colorScheme.outline,
                     ),
-                  const SizedBox(width: 8),
-                  Text('${_selectedStar!.percent}% match'),
+                  // Only show percentage if it's not a friend request
+                  if (!_selectedStar!.isFriendRequest) ...[
+                    const SizedBox(width: 8),
+                    Text('${_selectedStar!.percent}% match'),
+                  ],
                 ],
               ),
               const SizedBox(height: AsteriaTheme.spacingLarge),
               SizedBox(
                 width: double.infinity,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          try {
-                            await FriendService.sendRequest(_selectedStar!.id);
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Friend request sent')),
-                            );
-                          } catch (e) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed: $e')),
-                            );
-                          }
-                        },
-                        child: const Text('Add Friend'),
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildActionButton(),
               ),
             ],
           ),
@@ -895,6 +1160,10 @@ class StarData {
   final int percent;
   final int stars;
   final Color starColor;
+  final bool isFriendRequest; // True if this is an incoming friend request
+  final int? friendRequestId; // ID of the friend request if isFriendRequest is true
+  final bool isFriend; // True if already friends
+  final bool hasPendingRequest; // True if there's a pending request (either direction)
 
   StarData({
     required this.id,
@@ -909,6 +1178,10 @@ class StarData {
     required this.percent,
     required this.stars,
     required this.starColor,
+    this.isFriendRequest = false,
+    this.friendRequestId,
+    this.isFriend = false,
+    this.hasPendingRequest = false,
   });
 }
 

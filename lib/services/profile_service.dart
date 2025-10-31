@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mime/mime.dart';
@@ -62,13 +62,23 @@ class ProfileService {
   static SupabaseClient get _client => Supabase.instance.client;
 
   static Future<Profile?> getProfile(String userId) async {
-    final data = await _client
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .maybeSingle();
-    if (data == null) return null;
-    return Profile.fromMap(Map<String, dynamic>.from(data));
+    try {
+      final data = await _client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+      if (data == null) {
+        // debugPrint('ProfileService: No profile found for user $userId');
+        return null;
+      }
+      final profile = Profile.fromMap(Map<String, dynamic>.from(data));
+      // debugPrint('ProfileService: Successfully loaded profile for $userId: ${profile.fullName}');
+      return profile;
+    } catch (e) {
+      // debugPrint('ProfileService: Error fetching profile for $userId: $e');
+      return null;
+    }
   }
 
   static Future<bool> isProfileComplete(String userId) async {

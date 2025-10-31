@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme.dart';
 import '../services/chat_service.dart';
 
@@ -14,6 +16,7 @@ class ThreadPage extends StatefulWidget {
 class _ThreadPageState extends State<ThreadPage> {
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
   List<ChatMessage> _messages = const [];
   bool _sending = false;
 
@@ -31,11 +34,20 @@ class _ThreadPageState extends State<ThreadPage> {
 
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty || _sending) return;
+    if ((text.isEmpty && _selectedImageBytes == null) || _sending) return;
     setState(() => _sending = true);
     try {
-      await ChatService.sendMessage(widget.conversationId, text: text);
+      await ChatService.sendMessage(
+        widget.conversationId,
+        text: text.isEmpty ? null : text,
+        imageBytes: _selectedImageBytes,
+        imageFileName: _selectedImageFileName,
+      );
       _input.clear();
+      setState(() {
+        _selectedImageBytes = null;
+        _selectedImageFileName = null;
+      });
       await _load();
       await Future.delayed(const Duration(milliseconds: 100));
       if (_scroll.hasClients) {
@@ -45,8 +57,41 @@ class _ThreadPageState extends State<ThreadPage> {
           curve: Curves.easeOut,
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send message: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+  
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageFileName;
+  
+  Future<void> _pickImage() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+      
+      final bytes = await file.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedImageFileName = file.name;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
     }
   }
 
@@ -71,23 +116,62 @@ class _ThreadPageState extends State<ThreadPage> {
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
+                final hasImage = msg.imageUrl != null && msg.imageUrl!.isNotEmpty;
+                final hasText = msg.content != null && msg.content!.isNotEmpty;
+                
+                // Get image URL (convert storage path if needed)
+                String? imageUrl;
+                if (hasImage) {
+                  final imagePath = msg.imageUrl!;
+                  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                    imageUrl = imagePath;
+                  } else {
+                    imageUrl = ChatService.getPublicMessageImageUrl(imagePath);
+                  }
+                }
+                
                 return Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.72,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: EdgeInsets.all(hasImage && !hasText ? 0 : 12),
                     margin: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1F1F1F) : const Color(0xFFF1F1F3),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
-                      msg.content ?? '📷 Photo',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hasImage)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              imageUrl!,
+                              width: 200,
+                              height: 200,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.broken_image, size: 48),
+                                );
+                              },
+                            ),
+                          ),
+                        if (hasText && hasImage) const SizedBox(height: 8),
+                        if (hasText)
+                          Text(
+                            msg.content!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
@@ -99,29 +183,75 @@ class _ThreadPageState extends State<ThreadPage> {
             top: false,
             child: Padding(
               padding: const EdgeInsets.all(AsteriaTheme.spacingMedium),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText: 'Message...',
-                        filled: true,
-                        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  if (_selectedImageBytes != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      height: 120,
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _selectedImageBytes!,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              color: Colors.white,
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black54,
+                                padding: const EdgeInsets.all(4),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedImageBytes = null;
+                                  _selectedImageFileName = null;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    onPressed: _sending ? null : _send,
-                    icon: const Icon(Icons.send_rounded),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _sending ? null : _pickImage,
+                        icon: const Icon(Icons.image_rounded),
+                        tooltip: 'Add photo',
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _input,
+                          minLines: 1,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: _selectedImageBytes != null ? 'Add a caption...' : 'Message...',
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide.none,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        onPressed: _sending ? null : _send,
+                        icon: const Icon(Icons.send_rounded),
+                      ),
+                    ],
                   ),
                 ],
               ),
