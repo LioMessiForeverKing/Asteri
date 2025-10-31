@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/assignment_service.dart';
 import '../theme.dart';
 import 'star_map_page.dart';
