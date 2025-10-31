@@ -6,8 +6,12 @@ import 'pages/auth_gate.dart';
 import 'utils/constants.dart';
 import 'theme.dart';
 import 'services/push_service.dart';
+import 'services/notification_service.dart';
 // import 'services/location_service.dart'; // Location disabled for privacy
 import 'services/theme_controller.dart';
+
+// Global navigator key for notification navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +19,9 @@ Future<void> main() async {
     url: AppConstants.kSupabaseUrl,
     anonKey: AppConstants.kSupabaseAnonKey,
   );
-  // Best-effort push init (non-blocking)
+  // Best-effort push and notification init (non-blocking)
   unawaited(PushService.instance.initialize());
+  unawaited(NotificationService.instance.initialize());
   runApp(const MainApp());
 }
 
@@ -59,6 +64,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: AsteriaTheme.lightTheme,
       darkTheme: AsteriaTheme.darkTheme,
       themeMode: ThemeController.instance.mode,

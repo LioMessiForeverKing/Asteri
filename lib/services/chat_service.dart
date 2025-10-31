@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mime/mime.dart';
+import 'notification_service.dart';
+import 'profile_service.dart';
 
 class ConversationSummary {
   final String conversationId;
@@ -240,6 +242,14 @@ class ChatService {
         .update({'last_read_at': DateTime.now().toIso8601String()})
         .eq('conversation_id', conversationId)
         .eq('user_id', uid);
+
+    // Send notification to the other participant
+    try {
+      await _sendMessageNotification(conversationId, uid, text, finalImageUrl);
+    } catch (e) {
+      // Don't fail the message send if notification fails
+      debugPrint('Failed to send message notification: $e');
+    }
   }
   
   static Future<String> uploadMessageImage({
@@ -442,7 +452,7 @@ class ChatService {
       {int limit = 50, DateTime? before}) async {
     try {
       // debugPrint('Fetching messages for conversation: $conversationId');
-      
+
       // First verify we're a participant
       final uid = _client.auth.currentUser!.id;
       final participantCheck = await _client
@@ -451,29 +461,29 @@ class ChatService {
           .eq('conversation_id', conversationId)
           .eq('user_id', uid)
           .maybeSingle();
-      
+
       if (participantCheck == null) {
         // debugPrint('User $uid is not a participant in conversation $conversationId');
         return [];
       }
-      
+
       debugPrint('User is a participant, fetching messages...');
-      
+
       // Previously used for debugging - removed for security
-      
+
       final rows = await _client
           .from('messages')
           .select()
           .eq('conversation_id', conversationId)
           .order('created_at', ascending: false)
           .limit(limit);
-      
+
       // debugPrint('Raw query returned ${(rows as List<dynamic>).length} rows for conversation $conversationId');
-      
+
       final messages = (rows as List<dynamic>)
           .map((e) => ChatMessage.fromMap(Map<String, dynamic>.from(e)))
           .toList();
-      
+
       // debugPrint('Fetched ${messages.length} messages for conversation $conversationId');
       if (messages.isEmpty && (rows as List<dynamic>).isNotEmpty) {
         // debugPrint('WARNING: Rows returned but no messages parsed. First row: ${rows.first}');
@@ -483,6 +493,55 @@ class ChatService {
       debugPrint('Error fetching messages: $e');
       debugPrint('Stack trace: $stackTrace');
       rethrow;
+    }
+  }
+
+  static Future<void> _sendMessageNotification(
+    String conversationId,
+    String senderId,
+    String? text,
+    String? imageUrl,
+  ) async {
+    try {
+      // Get conversation participants to find the receiver
+      final participants = await _client
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', conversationId);
+
+      final participantIds = (participants as List<dynamic>)
+          .map((p) => p['user_id'] as String)
+          .toList();
+
+      // Find the receiver (not the sender)
+      final receiverId = participantIds.firstWhere((id) => id != senderId);
+
+      // Don't send notification if receiver is the same as sender (shouldn't happen in 1:1 chat)
+      if (receiverId == senderId) return;
+
+      // Get sender's profile for their name
+      final senderProfile = await ProfileService.getProfile(senderId);
+      final senderName = senderProfile?.fullName ?? 'Someone';
+
+      // Create message preview
+      String messagePreview;
+      if (text != null && text.isNotEmpty) {
+        messagePreview = text.length > 50 ? '${text.substring(0, 47)}...' : text;
+      } else if (imageUrl != null) {
+        messagePreview = '📷 Photo';
+      } else {
+        messagePreview = 'New message';
+      }
+
+      // Send local notification
+      await NotificationService.instance.showMessageNotification(
+        senderName: senderName,
+        messagePreview: messagePreview,
+        conversationId: conversationId,
+      );
+    } catch (e) {
+      // Don't rethrow - notification failure shouldn't break message sending
+      debugPrint('Failed to send message notification: $e');
     }
   }
 }

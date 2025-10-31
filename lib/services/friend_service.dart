@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chat_service.dart';
 import 'match_service.dart';
 import '../models/match_candidate.dart';
 import 'profile_service.dart';
 import '../models/profile.dart';
+import 'notification_service.dart';
 
 class FriendRequest {
   final int id;
@@ -52,6 +54,14 @@ class FriendService {
       'sender_id': uid,
       'receiver_id': receiverUserId,
     });
+
+    // Send notification to the receiver
+    try {
+      await _sendFriendRequestNotification(uid, receiverUserId);
+    } catch (e) {
+      // Don't fail the friend request if notification fails
+      debugPrint('Failed to send friend request notification: $e');
+    }
   }
 
   static Future<List<FriendRequest>> incomingPending() async {
@@ -203,6 +213,22 @@ class FriendService {
       return friends;
     } catch (_) {
       return [];
+    }
+  }
+
+  static Future<void> _sendFriendRequestNotification(String senderId, String receiverId) async {
+    try {
+      // Get sender's profile for their name
+      final senderProfile = await ProfileService.getProfile(senderId);
+      final senderName = senderProfile?.fullName ?? 'Someone';
+
+      // Send local notification to receiver
+      await NotificationService.instance.showFriendRequestNotification(
+        senderName: senderName,
+      );
+    } catch (e) {
+      // Don't rethrow - notification failure shouldn't break friend request sending
+      debugPrint('Failed to send friend request notification: $e');
     }
   }
 }
